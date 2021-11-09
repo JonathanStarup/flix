@@ -17,7 +17,7 @@
 package ca.uwaterloo.flix.language.phase
 
 import ca.uwaterloo.flix.api.Flix
-import ca.uwaterloo.flix.language.CompilationError
+import ca.uwaterloo.flix.language.CompilationMessage
 import ca.uwaterloo.flix.language.ast.ErasedAst._
 import ca.uwaterloo.flix.language.ast.PRefType._
 import ca.uwaterloo.flix.language.ast.PType._
@@ -33,7 +33,7 @@ import ca.uwaterloo.flix.util.{InternalCompilerException, Validation}
 
 object Eraser extends Phase[FinalAst.Root, ErasedAst.Root] {
 
-  def run(root: FinalAst.Root)(implicit flix: Flix): Validation[ErasedAst.Root, CompilationError] = flix.phase("Eraser") {
+  def run(root: FinalAst.Root)(implicit flix: Flix): Validation[ErasedAst.Root, CompilationMessage] = flix.phase("Eraser") {
     val EraserMonad((defns, enums), types, closures) = for {
       defns <- EM.foldRight(root.defs)(Map[Symbol.DefnSym, ErasedAst.Def[_ <: PType]]().toMonad) {
         case ((k, v), mapp) =>

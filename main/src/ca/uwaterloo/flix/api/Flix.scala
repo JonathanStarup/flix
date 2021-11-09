@@ -20,7 +20,7 @@ import ca.uwaterloo.flix.language.ast.Ast.Input
 import ca.uwaterloo.flix.language.ast._
 import ca.uwaterloo.flix.language.phase._
 import ca.uwaterloo.flix.language.phase.sjvm.SjvmBackend
-import ca.uwaterloo.flix.language.{CompilationError, GenSym}
+import ca.uwaterloo.flix.language.{CompilationMessage, GenSym}
 import ca.uwaterloo.flix.runtime.CompilationResult
 import ca.uwaterloo.flix.util._
 import ca.uwaterloo.flix.util.vt.TerminalContext
@@ -74,6 +74,7 @@ class Flix {
     "Mul.flix" -> LocalResource.get("/src/library/Mul.flix"),
     "Div.flix" -> LocalResource.get("/src/library/Div.flix"),
     "Rem.flix" -> LocalResource.get("/src/library/Rem.flix"),
+    "Mod.flix" -> LocalResource.get("/src/library/Mod.flix"),
     "Exp.flix" -> LocalResource.get("/src/library/Exp.flix"),
     "BitwiseNot.flix" -> LocalResource.get("/src/library/BitwiseNot.flix"),
     "BitwiseAnd.flix" -> LocalResource.get("/src/library/BitwiseAnd.flix"),
@@ -116,6 +117,8 @@ class Flix {
     "Choice.flix" -> LocalResource.get("/src/library/Choice.flix"),
     "Condition.flix" -> LocalResource.get("/src/library/Condition.flix"),
     "Console.flix" -> LocalResource.get("/src/library/Console.flix"),
+    "DelayMap.flix" -> LocalResource.get("/src/library/DelayMap.flix"),
+    "DemandList.flix" -> LocalResource.get("/src/library/DemandList.flix"),
     "Float32.flix" -> LocalResource.get("/src/library/Float32.flix"),
     "Float64.flix" -> LocalResource.get("/src/library/Float64.flix"),
     "Int8.flix" -> LocalResource.get("/src/library/Int8.flix"),
@@ -124,7 +127,6 @@ class Flix {
     "Int64.flix" -> LocalResource.get("/src/library/Int64.flix"),
     "Iterator.flix" -> LocalResource.get("/src/library/Iterator.flix"),
     "LazyList.flix" -> LocalResource.get("/src/library/LazyList.flix"),
-    "DemandList.flix" -> LocalResource.get("/src/library/DemandList.flix"),
     "List.flix" -> LocalResource.get("/src/library/List.flix"),
     "Map.flix" -> LocalResource.get("/src/library/Map.flix"),
     "Nel.flix" -> LocalResource.get("/src/library/Nel.flix"),
@@ -137,6 +139,7 @@ class Flix {
     "Stream.flix" -> LocalResource.get("/src/library/Stream.flix"),
     "String.flix" -> LocalResource.get("/src/library/String.flix"),
 
+    "MutDeque.flix" -> LocalResource.get("/src/library/MutDeque.flix"),
     "MutList.flix" -> LocalResource.get("/src/library/MutList.flix"),
     "MutSet.flix" -> LocalResource.get("/src/library/MutSet.flix"),
     "MutMap.flix" -> LocalResource.get("/src/library/MutMap.flix"),
@@ -149,13 +152,14 @@ class Flix {
     "FromString.flix" -> LocalResource.get("/src/library/FromString.flix"),
     "Functor.flix" -> LocalResource.get("/src/library/Functor.flix"),
     "Applicative.flix" -> LocalResource.get("/src/library/Applicative.flix"),
+    "Monad.flix" -> LocalResource.get("/src/library/Monad.flix"),
     "SemiGroup.flix" -> LocalResource.get("/src/library/SemiGroup.flix"),
     "Monoid.flix" -> LocalResource.get("/src/library/Monoid.flix"),
     "Foldable.flix" -> LocalResource.get("/src/library/Foldable.flix"),
 
     "Validation.flix" -> LocalResource.get("/src/library/Validation.flix"),
 
-    "Channel.flix" -> LocalResource.get("/src/library/Channel.flix"),
+    "ChannelImpl.flix" -> LocalResource.get("/src/library/ChannelImpl.flix"),
     "Ticker.flix" -> LocalResource.get("/src/library/Ticker.flix"),
     "Timer.flix" -> LocalResource.get("/src/library/Timer.flix"),
     "Duration.flix" -> LocalResource.get("/src/library/Duration.flix"),
@@ -318,7 +322,7 @@ class Flix {
   /**
     * Compiles the Flix program and returns a typed ast.
     */
-  def check(): Validation[TypedAst.Root, CompilationError] = {
+  def check(): Validation[TypedAst.Root, CompilationMessage] = {
     // Initialize fork join pool.
     initForkJoin()
 
@@ -360,7 +364,7 @@ class Flix {
   /**
     * Compiles the given typed ast to an executable ast.
     */
-  def codeGen(typedAst: TypedAst.Root): Validation[CompilationResult, CompilationError] = {
+  def codeGen(typedAst: TypedAst.Root): Validation[CompilationResult, CompilationMessage] = {
     // Initialize fork join pool.
     initForkJoin()
 
@@ -398,7 +402,7 @@ class Flix {
   /**
     * Compiles the given typed ast to an executable ast.
     */
-  def compile(): Validation[CompilationResult, CompilationError] =
+  def compile(): Validation[CompilationResult, CompilationMessage] =
     check() flatMap {
       case typedAst => codeGen(typedAst)
     }

@@ -16,9 +16,9 @@
 package ca.uwaterloo.flix.language.phase
 
 import ca.uwaterloo.flix.api.Flix
-import ca.uwaterloo.flix.language.CompilationError
+import ca.uwaterloo.flix.language.CompilationMessage
 import ca.uwaterloo.flix.language.ast.Ast.Denotation.{Latticenal, Relational}
-import ca.uwaterloo.flix.language.ast.Ast.{Denotation, Polarity}
+import ca.uwaterloo.flix.language.ast.Ast.{BoundBy, Denotation, Polarity}
 import ca.uwaterloo.flix.language.ast.TypedAst.Predicate.{Body, Head}
 import ca.uwaterloo.flix.language.ast.TypedAst._
 import ca.uwaterloo.flix.language.ast.ops.TypedAstOps
@@ -128,7 +128,7 @@ object Lowering extends Phase[Root, Root] {
   /**
     * Translates internal Datalog constraints into Flix Datalog constraints.
     */
-  def run(root: Root)(implicit flix: Flix): Validation[Root, CompilationError] = flix.phase("Lowering") {
+  def run(root: Root)(implicit flix: Flix): Validation[Root, CompilationMessage] = flix.phase("Lowering") {
     val defs = ParOps.parMap(root.defs.values, (d: Def) => visitDef(d)(root, flix))
     val sigs = ParOps.parMap(root.sigs.values, (s: Sig) => visitSig(s)(root, flix))
     val instances = ParOps.parMap(root.instances.values, (insts: List[Instance]) => insts.map(i => visitInstance(i)(root, flix)))
@@ -136,7 +136,7 @@ object Lowering extends Phase[Root, Root] {
 
     val newDefs = defs.map(kv => kv.sym -> kv).toMap
     val newSigs = sigs.map(kv => kv.sym -> kv).toMap
-    val newInstances = instances.map(kv => kv.head.sym -> kv).toMap
+    val newInstances = instances.map(kv => kv.head.sym.clazz -> kv).toMap
     val newEnums = enums.map(kv => kv.sym -> kv).toMap
 
     // Sigs are shared between the `sigs` field and the `classes` field.
@@ -283,9 +283,9 @@ object Lowering extends Phase[Root, Root] {
       val t = visitType(tpe)
       Expression.Sig(sym, t, loc)
 
-    case Expression.Hole(sym, tpe, eff, loc) =>
+    case Expression.Hole(sym, tpe, loc) =>
       val t = visitType(tpe)
-      Expression.Hole(sym, t, eff, loc)
+      Expression.Hole(sym, t, loc)
 
     case Expression.Lambda(fparam, exp, tpe, loc) =>
       val p = visitFormalParam(fparam)
@@ -550,7 +550,7 @@ object Lowering extends Phase[Root, Root] {
 
     case Expression.FixpointProjectIn(exp, pred, tpe, eff, loc) =>
       // Compute the arity of the functor F[(a, b, c)] or F[a].
-      val arity = exp.tpe match {
+      val arity = Type.eraseAliases(exp.tpe) match {
         case Type.Apply(_, innerType, _) => innerType.typeConstructor match {
           case Some(TypeConstructor.Tuple(l)) => l
           case _ => 1
@@ -572,7 +572,7 @@ object Lowering extends Phase[Root, Root] {
     case Expression.FixpointProjectOut(pred, exp, tpe, eff, loc) =>
       // Compute the arity of the predicate symbol.
       // The type is either of the form `Array[(a, b, c)]` or `Array[a]`.
-      val arity = tpe match {
+      val arity = Type.eraseAliases(tpe) match {
         case Type.Apply(Type.Cst(TypeConstructor.Array, _), innerType, _) => innerType.typeConstructor match {
           case Some(TypeConstructor.Tuple(_)) => innerType.typeArguments.length
           case Some(TypeConstructor.Unit) => 0
@@ -596,6 +596,11 @@ object Lowering extends Phase[Root, Root] {
       val t = visitType(t0)
       val tpe = visitType(tpe0)
       Expression.Reify(t, tpe, eff, loc)
+
+    case Expression.ReifyType(t0, k, tpe0, eff, loc) =>
+      val t = visitType(t0)
+      val tpe = visitType(tpe0)
+      Expression.ReifyType(t, k, tpe, eff, loc)
 
   }
 
@@ -693,7 +698,8 @@ object Lowering extends Phase[Root, Root] {
         val t2 = visitType(tpe2)
         Type.Apply(t1, t2, loc)
 
-      case _: Type.Lambda => throw InternalCompilerException(s"Unexpected type: '$tpe0'.")
+      case Type.Alias(sym, args, t, loc) => Type.Alias(sym, args.map(visit), visit(t), loc)
+
       case _: Type.UnkindedVar => throw InternalCompilerException(s"Unexpected type: '$tpe0'.")
       case _: Type.Ascribe => throw InternalCompilerException(s"Unexpected type: '$tpe0'.")
     }
@@ -1038,8 +1044,9 @@ object Lowering extends Phase[Root, Root] {
 
     // Special case: No free variables.
     if (fvs.isEmpty) {
+      val sym = Symbol.freshVarSym("_unit", BoundBy.FormalParam, loc)
       // Construct a lambda that takes the unit argument.
-      val fparam = FormalParam(Symbol.freshVarSym("_unit", loc), Ast.Modifiers.Empty, Type.Unit, loc)
+      val fparam = FormalParam(sym, Ast.Modifiers.Empty, Type.Unit, loc)
       val tpe = Type.mkPureArrow(Type.Unit, exp.tpe, loc)
       val lambdaExp = Expression.Lambda(fparam, exp, tpe, loc)
       return mkTag(Enums.BodyPredicate, s"Guard0", lambdaExp, Types.BodyPredicate, loc)
@@ -1087,8 +1094,9 @@ object Lowering extends Phase[Root, Root] {
 
     // Special case: No free variables.
     if (fvs.isEmpty) {
+      val sym = Symbol.freshVarSym("_unit", BoundBy.FormalParam, loc)
       // Construct a lambda that takes the unit argument.
-      val fparam = FormalParam(Symbol.freshVarSym("_unit", loc), Ast.Modifiers.Empty, Type.Unit, loc)
+      val fparam = FormalParam(sym, Ast.Modifiers.Empty, Type.Unit, loc)
       val tpe = Type.mkPureArrow(Type.Unit, exp.tpe, loc)
       val lambdaExp = Expression.Lambda(fparam, exp, tpe, loc)
       return mkTag(Enums.HeadTerm, s"App0", lambdaExp, Types.HeadTerm, loc)
@@ -1268,7 +1276,7 @@ object Lowering extends Phase[Root, Root] {
 
     case Expression.Sig(_, _, _) => exp0
 
-    case Expression.Hole(_, _, _, _) => exp0
+    case Expression.Hole(_, _, _) => exp0
 
     case Expression.Lambda(fparam, exp, tpe, loc) =>
       val p = substFormalParam(fparam, subst)
@@ -1485,6 +1493,9 @@ object Lowering extends Phase[Root, Root] {
 
     case Expression.Reify(t, tpe, eff, loc) =>
       Expression.Reify(t, tpe, eff, loc)
+
+    case Expression.ReifyType(t, k, tpe, eff, loc) =>
+      Expression.ReifyType(t, k, tpe, eff, loc)
 
     case Expression.FixpointConstraintSet(cs, stf, tpe, loc) => throw InternalCompilerException(s"Unexpected expression near ${loc.format}.")
   }

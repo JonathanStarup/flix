@@ -28,12 +28,13 @@ object KindedAst {
                   instances: Map[Symbol.ClassSym, List[KindedAst.Instance]],
                   defs: Map[Symbol.DefnSym, KindedAst.Def],
                   enums: Map[Symbol.EnumSym, KindedAst.Enum],
+                  typeAliases: Map[Symbol.TypeAliasSym, KindedAst.TypeAlias],
                   reachable: Set[Symbol.DefnSym],
                   sources: Map[Source, SourceLocation])
 
   case class Class(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tparam: KindedAst.TypeParam, superClasses: List[Ast.TypeConstraint], sigs: Map[Symbol.SigSym, KindedAst.Sig], laws: List[KindedAst.Def], loc: SourceLocation)
 
-  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tpe: Type, tconstrs: List[Ast.TypeConstraint], defs: List[KindedAst.Def], ns: Name.NName, loc: SourceLocation)
+  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.InstanceSym, tpe: Type, tconstrs: List[Ast.TypeConstraint], defs: List[KindedAst.Def], ns: Name.NName, loc: SourceLocation)
 
   case class Sig(sym: Symbol.SigSym, spec: KindedAst.Spec, exp: Option[KindedAst.Expression])
 
@@ -42,6 +43,8 @@ object KindedAst {
   case class Spec(doc: Ast.Doc, ann: List[KindedAst.Annotation], mod: Ast.Modifiers, tparams: List[KindedAst.TypeParam], fparams: List[KindedAst.FormalParam], sc: Scheme, tpe: Type, eff: Type, loc: SourceLocation)
 
   case class Enum(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.EnumSym, tparams: List[KindedAst.TypeParam], derives: List[Ast.Derivation], cases: Map[Name.Tag, KindedAst.Case], tpeDeprecated: Type, sc: Scheme, loc: SourceLocation)
+
+  case class TypeAlias(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.TypeAliasSym, tparams: List[KindedAst.TypeParam], tpe: Type, loc: SourceLocation)
 
   sealed trait Expression {
     def loc: SourceLocation
@@ -57,7 +60,7 @@ object KindedAst {
 
     case class Sig(sym: Symbol.SigSym, tpe: Type.KindedVar, loc: SourceLocation) extends KindedAst.Expression
 
-    case class Hole(sym: Symbol.HoleSym, tpe: Type.KindedVar, eff: Type.KindedVar, loc: SourceLocation) extends KindedAst.Expression
+    case class Hole(sym: Symbol.HoleSym, tpe: Type.KindedVar, loc: SourceLocation) extends KindedAst.Expression
 
     case class Unit(loc: SourceLocation) extends KindedAst.Expression
 
@@ -190,6 +193,8 @@ object KindedAst {
     case class FixpointProjectOut(pred: Name.Pred, exp1: KindedAst.Expression, exp2: KindedAst.Expression, tpe: Type.KindedVar, loc: SourceLocation) extends KindedAst.Expression
 
     case class Reify(t: Type, loc: SourceLocation) extends KindedAst.Expression
+
+    case class ReifyType(t: Type, k: Kind, loc: SourceLocation) extends KindedAst.Expression
 
   }
 

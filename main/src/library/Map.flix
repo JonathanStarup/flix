@@ -38,9 +38,9 @@ instance Hash[Map[k, v]] with Hash[k], Hash[v] {
         Map.foldLeftWithKey((acc, k, v) -> acc * 17 + Hash.hash(k) + 19 * Hash.hash(v), 7937, m)
 }
 
-instance Eq[Map[k, v]] with Order[k], Eq[v] {
+instance Eq[Map[k, v]] with Eq[k], Eq[v] {
     pub def eq(m1: Map[k, v], m2: Map[k, v]): Bool =
-        Map.isSubmapOf(m1, m2) and Map.isSubmapOf(m2, m1)
+        Map.toList(m1) == Map.toList(m2)
 
 }
 
@@ -244,9 +244,9 @@ namespace Map {
     /// Removes the mapping `k` from the map `m`.
     ///
     @Time(Int32.log2(size(m))) @Space(Int32.log2(size(m)))
-    pub def delete(k: k, m: Map[k, v]): Map[k, v] with Order[k] =
+    pub def remove(k: k, m: Map[k, v]): Map[k, v] with Order[k] =
         let Map(xs) = m;
-        Map(RedBlackTree.delete(k, xs))
+        Map(RedBlackTree.remove(k, xs))
 
 
 
@@ -579,6 +579,12 @@ namespace Map {
         foldLeftWithKey((acc, k, v) -> Set.insert((k, v), acc), Set.empty(), m)
 
     ///
+    /// Returns the map `m` as a `LazyList` of key-value pairs.
+    ///
+    pub def toLazyList(m: Map[k, v]): LazyList[(k, v)] =
+        foldRightWithKey((k, v, acc) -> ECons((k, v), acc), ENil, m)
+
+    ///
     /// Applies `f` to every element of `xs`.
     ///
     /// The function `f` must be impure.
@@ -641,4 +647,17 @@ namespace Map {
         let Map(xs) = m;
         RedBlackTree.queryWith(p, f, xs)
 
+    ///
+    /// Returns an iterator over all key-value pairs in `m`.
+    ///
+    pub def toIterator(m: Map[a, b]): Iterator[(a, b)] & Impure =
+        List.toIterator(Map.query(_ -> EqualTo, m))
+
+    ///
+    /// Returns `m` as a `DelayMap`.
+    ///
+    pub def toDelayMap(m: Map[k, v]): DelayMap[k, v] = {
+        let Map(t) = m;
+        DMap(RedBlackTree.mapWithKey((_, v) -> lazy v, t))
+    }
 }

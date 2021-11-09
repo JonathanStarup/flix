@@ -302,7 +302,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
       mapN(modVal, tparamsVal) {
         case (mod, tparams) =>
           val termTypes = attr.map(a => visitType(a.tpe))
-          val tpe = WeededAst.Type.Relation(termTypes.toList, loc)
+          val tpe = WeededAst.Type.Relation(termTypes.toList, ident.loc)
           List(WeededAst.Declaration.TypeAlias(doc, mod, ident, tparams, tpe, loc))
       }
   }
@@ -323,7 +323,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
       mapN(modVal, tparamsVal) {
         case (mod, tparams) =>
           val termTypes = attr.map(a => visitType(a.tpe))
-          val tpe = WeededAst.Type.Lattice(termTypes.toList, loc)
+          val tpe = WeededAst.Type.Lattice(termTypes.toList, ident.loc)
           List(WeededAst.Declaration.TypeAlias(doc, mod, ident, tparams, tpe, loc))
       }
   }
@@ -384,7 +384,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
 
     case ParsedAst.Expression.Intrinsic(sp1, op, exps, sp2) =>
       val loc = mkSL(sp1, sp2)
-      flatMapN(traverse(exps)(visitExp)) {
+      flatMapN(traverse(exps)(visitArgument)) {
         case es => (op.name, es) match {
           case ("BOOL_NOT", e1 :: Nil) => WeededAst.Expression.Unary(SemanticOperator.BoolOp.Not, e1, loc).toSuccess
           case ("BOOL_AND", e1 :: e2 :: Nil) => WeededAst.Expression.Binary(SemanticOperator.BoolOp.And, e1, e2, loc).toSuccess
@@ -537,7 +537,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
     case ParsedAst.Expression.Apply(lambda, args, sp2) =>
       val sp1 = leftMostSourcePosition(lambda)
       val loc = mkSL(sp1, sp2)
-      mapN(visitExp(lambda), traverse(args)(e => visitExp(e))) {
+      mapN(visitExp(lambda), traverse(args)(e => visitArgument(e))) {
         case (e, as) =>
           val es = getArguments(as, sp1, sp2)
           WeededAst.Expression.Apply(e, es, loc)
@@ -551,18 +551,6 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
         case (e1, lambda, e2) =>
           val loc = mkSL(leftMostSourcePosition(exp1), sp2)
           WeededAst.Expression.Apply(lambda, List(e1, e2), loc)
-      }
-
-    case ParsedAst.Expression.Postfix(exp, ident, exps, sp2) =>
-      /*
-       * Rewrites postfix expressions to apply expressions.
-       */
-      mapN(visitExp(exp), traverse(exps)(e => visitExp(e))) {
-        case (e, es) =>
-          val sp1 = leftMostSourcePosition(exp)
-          val loc = mkSL(sp1, sp2)
-          val lambda = WeededAst.Expression.VarOrDefOrSig(ident, loc)
-          WeededAst.Expression.Apply(lambda, e :: es, loc)
       }
 
     case ParsedAst.Expression.Lambda(sp1, fparams0, exp, sp2) =>
@@ -596,12 +584,11 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
     case ParsedAst.Expression.Unary(sp1, op, exp, sp2) =>
       val loc = mkSL(sp1, sp2)
       visitExp(exp) map {
-        case e => op match {
-          case "not" => WeededAst.Expression.Unary(SemanticOperator.BoolOp.Not, e, loc)
-          case "+" => e
-          case "-" => mkApplyFqn("Neg.neg", List(e), sp1, sp2)
-          case "~~~" => mkApplyFqn("BitwiseNot.not", List(e), sp1, sp2)
-          case _ => mkApplyFqn(op, List(e), sp1, sp2)
+        e => visitUnaryOperator(op) match {
+          case OperatorResult.BuiltIn(name) => WeededAst.Expression.Apply(WeededAst.Expression.DefOrSig(name, name.loc), List(e), loc)
+          case OperatorResult.Operator(o) => WeededAst.Expression.Unary(o, e, loc)
+          case OperatorResult.NoOp => e
+          case OperatorResult.Unrecognized(ident) => WeededAst.Expression.Apply(WeededAst.Expression.VarOrDefOrSig(ident, ident.loc), List(e), loc)
         }
       }
 
@@ -609,28 +596,11 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
       val sp1 = leftMostSourcePosition(exp1)
       val loc = mkSL(sp1, sp2)
       mapN(visitExp(exp1), visitExp(exp2)) {
-        case (e1, e2) => op match {
-          case "+" => mkApplyFqn("Add.add", List(e1, e2), sp1, sp2)
-          case "-" => mkApplyFqn("Sub.sub", List(e1, e2), sp1, sp2)
-          case "*" => mkApplyFqn("Mul.mul", List(e1, e2), sp1, sp2)
-          case "/" => mkApplyFqn("Div.div", List(e1, e2), sp1, sp2)
-          case "%" => mkApplyFqn("Rem.rem", List(e1, e2), sp1, sp2)
-          case "**" => mkApplyFqn("Exp.exp", List(e1, e2), sp1, sp2)
-          case "<" => mkApplyFqn("Order.less", List(e1, e2), sp1, sp2)
-          case "<=" => mkApplyFqn("Order.lessEqual", List(e1, e2), sp1, sp2)
-          case ">" => mkApplyFqn("Order.greater", List(e1, e2), sp1, sp2)
-          case ">=" => mkApplyFqn("Order.greaterEqual", List(e1, e2), sp1, sp2)
-          case "==" => mkApplyFqn("Eq.eq", List(e1, e2), sp1, sp2)
-          case "!=" => mkApplyFqn("Eq.neq", List(e1, e2), sp1, sp2)
-          case "<=>" => mkApplyFqn("Order.compare", List(e1, e2), sp1, sp2)
-          case "and" => WeededAst.Expression.Binary(SemanticOperator.BoolOp.And, e1, e2, loc)
-          case "or" => WeededAst.Expression.Binary(SemanticOperator.BoolOp.Or, e1, e2, loc)
-          case "&&&" => mkApplyFqn("BitwiseAnd.and", List(e1, e2), sp1, sp2)
-          case "|||" => mkApplyFqn("BitwiseOr.or", List(e1, e2), sp1, sp2)
-          case "^^^" => mkApplyFqn("BitwiseXor.xor", List(e1, e2), sp1, sp2)
-          case "<<<" => mkApplyFqn("BitwiseShl.shl", List(e1, e2), sp1, sp2)
-          case ">>>" => mkApplyFqn("BitwiseShr.shr", List(e1, e2), sp1, sp2)
-          case _ => mkApplyIdent(op, List(e1, e2), sp1, sp2)
+        case (e1, e2) => visitBinaryOperator(op) match {
+          case OperatorResult.BuiltIn(name) => WeededAst.Expression.Apply(WeededAst.Expression.DefOrSig(name, name.loc), List(e1, e2), loc)
+          case OperatorResult.Operator(o) => WeededAst.Expression.Binary(o, e1, e2, loc)
+          case OperatorResult.Unrecognized(ident) => WeededAst.Expression.Apply(WeededAst.Expression.VarOrDefOrSig(ident, ident.loc), List(e1, e2), loc)
+          case OperatorResult.NoOp => throw InternalCompilerException(s"Unexpected operator: $op")
         }
       }
 
@@ -1094,11 +1064,11 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
       val exp = WeededAst.Expression.Unit(loc)
       WeededAst.Expression.Tag(None, tag, Some(exp), loc).toSuccess
 
-    case ParsedAst.Expression.FCons(hd, sp1, sp2, tl) =>
+    case ParsedAst.Expression.FCons(exp1, sp1, sp2, exp2) =>
       /*
        * Rewrites a `FCons` expression into a tag expression.
        */
-      mapN(visitExp(hd), visitExp(tl)) {
+      mapN(visitExp(exp1), visitExp(exp2)) {
         case (e1, e2) =>
           val loc = mkSL(sp1, sp2)
           val tag = Name.Tag("Cons", loc)
@@ -1106,22 +1076,22 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
           WeededAst.Expression.Tag(None, tag, Some(exp), loc)
       }
 
-    case ParsedAst.Expression.FAppend(fst, sp1, sp2, snd) =>
+    case ParsedAst.Expression.FAppend(exp1, sp1, sp2, exp2) =>
       /*
        * Rewrites a `FAppend` expression into a call to `List/append`.
        */
-      mapN(visitExp(fst), visitExp(snd)) {
+      mapN(visitExp(exp1), visitExp(exp2)) {
         case (e1, e2) =>
           // NB: We painstakingly construct the qualified name
           // to ensure that source locations are available.
           mkApplyFqn("List.append", List(e1, e2), sp1, sp2)
       }
 
-    case ParsedAst.Expression.FSet(sp1, elms, sp2) =>
+    case ParsedAst.Expression.FSet(sp1, sp2, exps) =>
       /*
        * Rewrites a `FSet` expression into `Set/empty` and a `Set/insert` calls.
        */
-      traverse(elms)(e => visitExp(e)) map {
+      traverse(exps)(e => visitExp(e)) map {
         case es =>
           val empty = mkApplyFqn("Set.empty", List(WeededAst.Expression.Unit(mkSL(sp1, sp2))), sp1, sp2)
           es.foldLeft(empty) {
@@ -1129,11 +1099,11 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
           }
       }
 
-    case ParsedAst.Expression.FMap(sp1, elms, sp2) =>
+    case ParsedAst.Expression.FMap(sp1, sp2, exps) =>
       /*
        * Rewrites a `FMap` expression into `Map/empty` and a `Map/insert` calls.
        */
-      val elmsVal = traverse(elms) {
+      val elmsVal = traverse(exps) {
         case (key, value) => mapN(visitExp(key), visitExp(value)) {
           case (k, v) => (k, v)
         }
@@ -1483,6 +1453,103 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
       val t = visitType(t0)
       WeededAst.Expression.Reify(t, mkSL(sp1, sp2)).toSuccess
 
+    case ParsedAst.Expression.ReifyBool(sp1, t0, sp2) =>
+      val t = visitType(t0)
+      WeededAst.Expression.ReifyType(t, Kind.Bool, mkSL(sp1, sp2)).toSuccess
+
+    case ParsedAst.Expression.ReifyType(sp1, t0, sp2) =>
+      val t = visitType(t0)
+      WeededAst.Expression.ReifyType(t, Kind.Star, mkSL(sp1, sp2)).toSuccess
+
+  }
+
+  /**
+    * Performs weeding on the given argument.
+    *
+    * Named arguments are transformed into records.
+    * `f(arg = x)` becomes `f({arg = x})`
+    */
+  private def visitArgument(arg: ParsedAst.Argument)(implicit flix: Flix): Validation[WeededAst.Expression, WeederError] = arg match {
+    // Case 1: Named parameter. Turn it into a record.
+    case ParsedAst.Argument.Named(name, exp0, sp2) =>
+      visitExp(exp0) map {
+        exp =>
+          val loc = mkSL(name.sp1, sp2)
+          WeededAst.Expression.RecordExtend(Name.mkField(name), exp, WeededAst.Expression.RecordEmpty(loc), loc)
+      }
+    // Case 2: Unnamed parameter. Just return it.
+    case ParsedAst.Argument.Unnamed(exp) => visitExp(exp)
+  }
+
+  /**
+    * The result of weeding an operator.
+    */
+  private sealed trait OperatorResult
+  private object OperatorResult {
+    /**
+      * The operator represents a signature or definition from the core library.
+      */
+    case class BuiltIn(name: Name.QName) extends OperatorResult
+
+    /**
+      * The operator represents a semantic operator.
+      */
+    case class Operator(op: SemanticOperator) extends OperatorResult
+
+    /**
+      * The operator represents a no-op.
+      */
+    case object NoOp extends OperatorResult
+
+    /**
+      * The operator is unrecognized: it must have been defined elsewhere.
+      */
+    case class Unrecognized(ident: Name.Ident) extends OperatorResult
+  }
+
+  /**
+    * Performs weeding on the given unary operator.
+    */
+  private def visitUnaryOperator(o: ParsedAst.Operator)(implicit flix: Flix): OperatorResult = o match {
+    case ParsedAst.Operator(sp1, op, sp2) =>
+      op match {
+        case "not" => OperatorResult.Operator(SemanticOperator.BoolOp.Not)
+        case "+" => OperatorResult.NoOp
+        case "-" => OperatorResult.BuiltIn(Name.mkQName("Neg.neg", sp1, sp2))
+        case "~~~" => OperatorResult.BuiltIn(Name.mkQName("BitwiseNot.not", sp1, sp2))
+        case _ => OperatorResult.Unrecognized(Name.Ident(sp1, op, sp2))
+      }
+  }
+
+  /**
+    * Performs weeding on the given binary operator.
+    */
+  private def visitBinaryOperator(o: ParsedAst.Operator)(implicit flix: Flix): OperatorResult = o match {
+    case ParsedAst.Operator(sp1, op, sp2) =>
+      op match {
+        case "+" => OperatorResult.BuiltIn(Name.mkQName("Add.add", sp1, sp2))
+        case "-" => OperatorResult.BuiltIn(Name.mkQName("Sub.sub", sp1, sp2))
+        case "*" => OperatorResult.BuiltIn(Name.mkQName("Mul.mul", sp1, sp2))
+        case "/" => OperatorResult.BuiltIn(Name.mkQName("Div.div", sp1, sp2))
+        case "rem" => OperatorResult.BuiltIn(Name.mkQName("Rem.rem", sp1, sp2))
+        case "mod" => OperatorResult.BuiltIn(Name.mkQName("Mod.mod", sp1, sp2))
+        case "**" => OperatorResult.BuiltIn(Name.mkQName("Exp.exp", sp1, sp2))
+        case "<" => OperatorResult.BuiltIn(Name.mkQName("Order.less", sp1, sp2))
+        case "<=" => OperatorResult.BuiltIn(Name.mkQName("Order.lessEqual", sp1, sp2))
+        case ">" => OperatorResult.BuiltIn(Name.mkQName("Order.greater", sp1, sp2))
+        case ">=" => OperatorResult.BuiltIn(Name.mkQName("Order.greaterEqual", sp1, sp2))
+        case "==" => OperatorResult.BuiltIn(Name.mkQName("Eq.eq", sp1, sp2))
+        case "!=" => OperatorResult.BuiltIn(Name.mkQName("Eq.neq", sp1, sp2))
+        case "<=>" => OperatorResult.BuiltIn(Name.mkQName("Order.compare", sp1, sp2))
+        case "and" => OperatorResult.Operator(SemanticOperator.BoolOp.And)
+        case "or" => OperatorResult.Operator(SemanticOperator.BoolOp.Or)
+        case "&&&" => OperatorResult.BuiltIn(Name.mkQName("BitwiseAnd.and", sp1, sp2))
+        case "|||" => OperatorResult.BuiltIn(Name.mkQName("BitwiseOr.or", sp1, sp2))
+        case "^^^" => OperatorResult.BuiltIn(Name.mkQName("BitwiseXor.xor", sp1, sp2))
+        case "<<<" => OperatorResult.BuiltIn(Name.mkQName("BitwiseShl.shl", sp1, sp2))
+        case ">>>" => OperatorResult.BuiltIn(Name.mkQName("BitwiseShr.shr", sp1, sp2))
+        case _ => OperatorResult.Unrecognized(Name.Ident(sp1, op, sp2))
+      }
   }
 
   /**
@@ -1521,7 +1588,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
 
           // Case 3.2: Unicode escape
           case "u" => rest match {
-            // Case 3.2.1: `\u` followed by 4 or more literals
+            // Case 3.2.1: `\\u` followed by 4 or more literals
             case ParsedAst.CharCode.Literal(sp1, d0, _) ::
               ParsedAst.CharCode.Literal(_, d1, _) ::
               ParsedAst.CharCode.Literal(_, d2, _) ::
@@ -1533,7 +1600,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
                 case Validation.Success(char) => visit(rest2, char :: acc)
                 case Validation.Failure(errors) => Validation.Failure(errors)
               }
-            // Case 3.2.2: `\u` followed by less than 4 literals
+            // Case 3.2.2: `\\u` followed by less than 4 literals
             case rest2 =>
               val code = rest2.takeWhile(_.isInstanceOf[ParsedAst.CharCode.Literal])
               val sp2 = code.lastOption.getOrElse(esc).sp2
@@ -1834,7 +1901,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
 
     case ParsedAst.Predicate.Body.Filter(sp1, qname, terms, sp2) =>
       val loc = mkSL(sp1, sp2)
-      traverse(terms)(visitExp) map {
+      traverse(terms)(visitArgument) map {
         case ts =>
           // Check if the argument list is empty. If so, invoke the function with the Unit value.
           val as = if (ts.isEmpty) List(WeededAst.Expression.Unit(loc)) else ts
@@ -1877,7 +1944,7 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
     */
   private def visitAnnotation(past: ParsedAst.Annotation)(implicit flix: Flix): Validation[WeededAst.Annotation, WeederError] = {
     val loc = mkSL(past.sp1, past.sp2)
-    val argsVal = traverse(past.args.getOrElse(Nil))(visitExp)
+    val argsVal = traverse(past.args.getOrElse(Nil))(visitArgument)
 
     flatMapN(argsVal) {
       case args =>
@@ -2406,7 +2473,6 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
     case ParsedAst.Expression.Intrinsic(sp1, _, _, _) => sp1
     case ParsedAst.Expression.Apply(e1, _, _) => leftMostSourcePosition(e1)
     case ParsedAst.Expression.Infix(e1, _, _, _) => leftMostSourcePosition(e1)
-    case ParsedAst.Expression.Postfix(e1, _, _, _) => leftMostSourcePosition(e1)
     case ParsedAst.Expression.Lambda(sp1, _, _, _) => sp1
     case ParsedAst.Expression.LambdaMatch(sp1, _, _, _) => sp1
     case ParsedAst.Expression.Unary(sp1, _, _, _) => sp1
@@ -2458,6 +2524,8 @@ object Weeder extends Phase[ParsedAst.Program, WeededAst.Program] {
     case ParsedAst.Expression.FixpointSolveWithProject(sp1, _, _, _) => sp1
     case ParsedAst.Expression.FixpointQueryWithSelect(sp1, _, _, _, _, _) => sp1
     case ParsedAst.Expression.Reify(sp1, _, _) => sp1
+    case ParsedAst.Expression.ReifyBool(sp1, _, _) => sp1
+    case ParsedAst.Expression.ReifyType(sp1, _, _) => sp1
   }
 
   /**

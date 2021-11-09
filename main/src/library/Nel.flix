@@ -57,6 +57,11 @@ instance Functor[Nel] {
     pub def map(f: a -> b & ef, xs: Nel[a]): Nel[b] & ef = Nel.map(f, xs)
 }
 
+// TODO implement Applicative
+// instance Monad[Nel] {
+//     pub def flatMap(f: a -> Nel[b] & ef, x : Nel[a]) : Nel[b] & ef = Nel.flatMap(f, x)
+// }
+
 instance Foldable[Nel] {
     pub def foldLeft(f: (b, a) -> b & ef, s: b, xs: Nel[a]): b & ef = Nel.foldLeft(f, s, xs)
     pub def foldRight(f: (a, b) -> b & ef, s: b, xs: Nel[a]): b & ef = Nel.foldRight(f, s, xs)
@@ -487,6 +492,13 @@ namespace Nel {
         case Nil     => acc
         case x :: xs => sumAcc(xs, x + acc)
     }
+
+    ///
+    /// Returns an iterator over `l`.
+    ///
+    pub def toIterator(l: Nel[a]): Iterator[a] & Impure =
+       let Nel(x, xs) = l;
+       List.toIterator(x :: xs)
 
 }
 

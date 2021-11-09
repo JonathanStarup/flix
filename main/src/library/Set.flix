@@ -38,9 +38,9 @@ instance Hash[Set[a]] with Hash[a] {
         Set.foldLeft((acc, x) -> acc * 37 + Hash.hash(x), 7793, xs)
 }
 
-instance Eq[Set[a]] with Order[a] {
+instance Eq[Set[a]] with Eq[a] {
     pub def eq(xs: Set[a], ys: Set[a]): Bool =
-        Set.isSubsetOf(xs, ys) and Set.isSubsetOf(ys, xs)
+        Set.toList(xs) == Set.toList(ys)
 }
 
 instance Order[Set[a]] with Order[a] {
@@ -107,9 +107,9 @@ namespace Set {
     /// Removes `x` from `xs`.
     ///
     @Time(Int32.log2(size(xs))) @Space(Int32.log2(size(xs)))
-    pub def delete(x: a, xs: Set[a]): Set[a] with Order[a] =
+    pub def remove(x: a, xs: Set[a]): Set[a] with Order[a] =
         let Set(es) = xs;
-        Set(RedBlackTree.delete(x, es))
+        Set(RedBlackTree.remove(x, es))
 
 
 
@@ -373,7 +373,7 @@ namespace Set {
     ///
     @Time(Int32.log2(size(xs))) @Space(Int32.log2(size(xs)))
     pub def replace(x: a, y: a, xs: Set[a]): Set[a] with Order[a] =
-        if (memberOf(x, xs)) insert(y, delete(x, xs)) else xs
+        if (memberOf(x, xs)) insert(y, remove(x, xs)) else xs
 
     ///
     /// Returns a pair of sets `(ys, zs)`.
@@ -488,5 +488,17 @@ namespace Set {
     ///
     def rangeHelper(b: Int32, n: Int32, acc: Set[Int32]): Set[Int32] =
         if (n < b) acc else rangeHelper(b, n - 1, insert(n, acc))
+
+    ///
+    /// Returns the set `s` as a `LazyList`.
+    ///
+    pub def toLazyList(s: Set[a]): LazyList[a] =
+        foldRight((x, acc) -> ECons(x, acc), ENil, s)
+
+    ///
+    /// Returns an iterator over `s`.
+    ///
+    pub def toIterator(s: Set[a]): Iterator[a] & Impure =
+        List.toIterator(Set.toList(s))
 
 }

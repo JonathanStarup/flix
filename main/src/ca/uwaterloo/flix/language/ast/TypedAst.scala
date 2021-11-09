@@ -29,6 +29,7 @@ object TypedAst {
                   sigs: Map[Symbol.SigSym, TypedAst.Sig],
                   defs: Map[Symbol.DefnSym, TypedAst.Def],
                   enums: Map[Symbol.EnumSym, TypedAst.Enum],
+                  typealiases: Map[Symbol.TypeAliasSym, TypedAst.TypeAlias],
                   reachable: Set[Symbol.DefnSym],
                   sources: Map[Source, SourceLocation],
                   classEnv: Map[Symbol.ClassSym, Ast.ClassContext])
@@ -36,7 +37,7 @@ object TypedAst {
   // TODO use TypedAst.Law for laws
   case class Class(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tparam: TypedAst.TypeParam, superClasses: List[Ast.TypeConstraint], signatures: List[TypedAst.Sig], laws: List[TypedAst.Def], loc: SourceLocation)
 
-  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tpe: Type, tconstrs: List[Ast.TypeConstraint], defs: List[TypedAst.Def], ns: Name.NName, loc: SourceLocation)
+  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.InstanceSym, tpe: Type, tconstrs: List[Ast.TypeConstraint], defs: List[TypedAst.Def], ns: Name.NName, loc: SourceLocation)
 
   case class Sig(sym: Symbol.SigSym, spec: TypedAst.Spec, impl: Option[TypedAst.Impl])
 
@@ -47,6 +48,8 @@ object TypedAst {
   case class Impl(exp: TypedAst.Expression, inferredScheme: Scheme)
 
   case class Enum(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.EnumSym, tparams: List[TypedAst.TypeParam], cases: Map[Name.Tag, TypedAst.Case], tpeDeprecated: Type, sc: Scheme, loc: SourceLocation)
+
+  case class TypeAlias(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.TypeAliasSym, tparams: List[TypedAst.TypeParam], tpe: Type, loc: SourceLocation)
 
   sealed trait Expression extends Product {
     def tpe: Type
@@ -156,7 +159,9 @@ object TypedAst {
       def eff: Type = Type.Pure
     }
 
-    case class Hole(sym: Symbol.HoleSym, tpe: Type, eff: Type, loc: SourceLocation) extends TypedAst.Expression
+    case class Hole(sym: Symbol.HoleSym, tpe: Type, loc: SourceLocation) extends TypedAst.Expression {
+      def eff: Type = Type.Pure
+    }
 
     case class Lambda(fparam: TypedAst.FormalParam, exp: TypedAst.Expression, tpe: Type, loc: SourceLocation) extends TypedAst.Expression {
       def eff: Type = Type.Pure
@@ -283,6 +288,8 @@ object TypedAst {
     case class FixpointProjectOut(pred: Name.Pred, exp: TypedAst.Expression, tpe: Type, eff: Type, loc: SourceLocation) extends TypedAst.Expression
 
     case class Reify(t: Type, tpe: Type, eff: Type, loc: SourceLocation) extends TypedAst.Expression
+
+    case class ReifyType(t: Type, k: Kind, tpe: Type, eff: Type, loc: SourceLocation) extends TypedAst.Expression
 
   }
 

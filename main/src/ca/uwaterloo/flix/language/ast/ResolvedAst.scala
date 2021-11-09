@@ -28,13 +28,14 @@ object ResolvedAst {
                   defs: Map[Symbol.DefnSym, ResolvedAst.Def],
                   enums: Map[Symbol.EnumSym, ResolvedAst.Enum],
                   typealiases: Map[Symbol.TypeAliasSym, ResolvedAst.TypeAlias],
+                  taOrder: List[Symbol.TypeAliasSym],
                   reachable: Set[Symbol.DefnSym],
                   sources: Map[Source, SourceLocation])
 
   // TODO use ResolvedAst.Law for laws
   case class Class(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tparam: ResolvedAst.TypeParam, superClasses: List[ResolvedAst.TypeConstraint], sigs: Map[Symbol.SigSym, ResolvedAst.Sig], laws: List[ResolvedAst.Def], loc: SourceLocation)
 
-  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.ClassSym, tpe: Type, tconstrs: List[ResolvedAst.TypeConstraint], defs: List[ResolvedAst.Def], ns: Name.NName, loc: SourceLocation)
+  case class Instance(doc: Ast.Doc, mod: Ast.Modifiers, sym: Symbol.InstanceSym, tpe: Type, tconstrs: List[ResolvedAst.TypeConstraint], defs: List[ResolvedAst.Def], ns: Name.NName, loc: SourceLocation)
 
   case class Sig(sym: Symbol.SigSym, spec: ResolvedAst.Spec, exp: Option[ResolvedAst.Expression])
 
@@ -193,6 +194,8 @@ object ResolvedAst {
     case class FixpointProjectOut(pred: Name.Pred, exp1: ResolvedAst.Expression, exp2: ResolvedAst.Expression, loc: SourceLocation) extends ResolvedAst.Expression
 
     case class Reify(t: Type, loc: SourceLocation) extends ResolvedAst.Expression
+
+    case class ReifyType(t: Type, k: Kind, loc: SourceLocation) extends ResolvedAst.Expression
 
   }
 

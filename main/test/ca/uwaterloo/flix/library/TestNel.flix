@@ -219,13 +219,13 @@ namespace Nel {
     def flatMap03(): Bool = flatMap(x -> Nel(x + 1, Nil), Nel(1, 2 :: 3 :: Nil)) == Nel(2, 3 :: 4 :: Nil)
 
     @test
-    def flatMap04(): Bool = flatMap(x -> Nel(x, x :: Nil), Nel(1, Nil)) == Nel(1, 1 :: Nil)
+    def flatMap04(): Bool = flatMap(x -> Nel(x, (x+1) :: Nil), Nel(1, Nil)) == Nel(1, 2 :: Nil)
 
     @test
-    def flatMap05(): Bool = flatMap(x -> Nel(x, x :: Nil), Nel(1, 2 :: Nil)) == Nel(1, 1 :: 2 :: 2 :: Nil)
+    def flatMap05(): Bool = flatMap(x -> Nel(x, (x+1) :: Nil), Nel(1, 4 :: Nil)) == Nel(1, 2 :: 4 :: 5 :: Nil)
 
     @test
-    def flatMap06(): Bool = flatMap(x -> Nel(x, x :: Nil), Nel(1, 2 :: 3 :: Nil)) == Nel(1, 1 :: 2 :: 2 :: 3 :: 3 :: Nil)
+    def flatMap06(): Bool = flatMap(x -> Nel(x, (x+1) :: Nil), Nel(1, 3 :: 5 :: Nil)) == Nel(1, 2 :: 3 :: 4 :: 5 :: 6 :: Nil)
 
     /////////////////////////////////////////////////////////////////////////////
     // reverse                                                                 //
@@ -745,5 +745,18 @@ def sortBy09(): Bool = testSortByVsSort(Nel(2, 3 :: 0 :: 4 :: 1 :: 2 :: Nil))
     @test
     def sum07(): Bool =
         Nel(1, List.range(2, 101)) |> Nel.sum == 5050
+
+
+    /////////////////////////////////////////////////////////////////////////////
+    // toIterator                                                              //
+    /////////////////////////////////////////////////////////////////////////////
+
+    @test
+    def toIterator01(): Bool & Impure =
+        Nel(1, 2 :: 3 :: Nil) |> Nel.toIterator |> Iterator.toNel == Some(Nel(1, 2 :: 3 :: Nil))
+
+    @test
+    def toIterator02(): Bool & Impure =
+        Nel(-100, List.range(-99, 100)) |> Nel.toIterator |> Iterator.toList == List.range(-100, 100)
 
 }
