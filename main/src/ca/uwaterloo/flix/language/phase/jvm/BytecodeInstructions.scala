@@ -16,6 +16,7 @@
 
 package ca.uwaterloo.flix.language.phase.jvm
 
+import ca.uwaterloo.flix.language.ast.SourceLocation
 import ca.uwaterloo.flix.language.phase.jvm.BytecodeInstructions.Branch.{FalseBranch, TrueBranch}
 import ca.uwaterloo.flix.language.phase.jvm.ClassMaker._
 import ca.uwaterloo.flix.language.phase.jvm.JvmName.MethodDescriptor
@@ -31,6 +32,9 @@ object BytecodeInstructions {
   sealed class F(visitor: MethodVisitor) {
     def visitTypeInstruction(opcode: Int, tpe: JvmName): Unit =
       visitor.visitTypeInsn(opcode, tpe.toInternalName)
+
+    def visitTypeInstruction(opcode: Int, arrayDescriptor: String): Unit =
+      visitor.visitTypeInsn(opcode, arrayDescriptor)
 
     def visitInstruction(opcode: Int): Unit = visitor.visitInsn(opcode)
 
@@ -52,6 +56,9 @@ object BytecodeInstructions {
 
     def visitLabel(label: Label): Unit =
       visitor.visitLabel(label)
+
+    def visitLineNumber(line: Int, label: Label): Unit =
+      visitor.visitLineNumber(line, label)
 
     def visitLoadConstantInstruction(v: Any): Unit =
       visitor.visitLdcInsn(v)
@@ -172,6 +179,11 @@ object BytecodeInstructions {
 
   def CHECKCAST(className: JvmName): InstructionSet = f => {
     f.visitTypeInstruction(Opcodes.CHECKCAST, className)
+    f
+  }
+
+  def CHECKCAST(arr: BackendType.Array): InstructionSet = f => {
+    f.visitTypeInstruction(Opcodes.CHECKCAST, arr.toDescriptor)
     f
   }
 
@@ -447,6 +459,13 @@ object BytecodeInstructions {
   // ~~~~~~~~~~~~~~~~~~~~~~~~~ Meta JVM Instructions ~~~~~~~~~~~~~~~~~~~~~~~~~~
   //
 
+  def addSourceLine(loc: SourceLocation): InstructionSet = f => {
+    val label = new Label()
+    f.visitLabel(label)
+    .visitLineNumber(loc.beginLine, label)
+    f
+  }
+
   def branch(c: Condition)(cases: Branch => InstructionSet): InstructionSet = f0 => {
     var f = f0
     val jumpLabel = new Label()
@@ -644,6 +663,15 @@ object BytecodeInstructions {
     case BackendType.Array(BackendType.Float32) => INVOKESTATIC(BackendObjType.Arrays.Float32ArrToString)
     case BackendType.Array(BackendType.Float64) => INVOKESTATIC(BackendObjType.Arrays.Float64ArrToString)
     case BackendType.Array(BackendType.Reference(_) | BackendType.Array(_)) => INVOKESTATIC(BackendObjType.Arrays.DeepToString)
+  }
+
+  /**
+    * [[nop]] if `tpe` is primitive, otherwise `CHECKCAST(tpe)`.
+    */
+  def xCast(tpe: BackendType): InstructionSet = tpe match {
+    case arr: BackendType.Array => CHECKCAST(arr)
+    case ref: BackendType.Reference => CHECKCAST(ref.name)
+    case _: BackendType.PrimitiveType => nop()
   }
 
   def composeN(ins: IterableOnce[InstructionSet]): InstructionSet =

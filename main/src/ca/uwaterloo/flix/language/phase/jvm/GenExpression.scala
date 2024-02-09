@@ -22,7 +22,6 @@ import ca.uwaterloo.flix.language.ast.Ast.CallType
 import ca.uwaterloo.flix.language.ast.ReducedAst._
 import ca.uwaterloo.flix.language.ast.SemanticOp._
 import ca.uwaterloo.flix.language.ast.{MonoType, _}
-import ca.uwaterloo.flix.language.phase.jvm.BackendObjType.JavaObject
 import ca.uwaterloo.flix.language.phase.jvm.BytecodeInstructions.InstructionSet
 import ca.uwaterloo.flix.language.phase.jvm.JvmName.MethodDescriptor
 import ca.uwaterloo.flix.util.InternalCompilerException
@@ -54,18 +53,16 @@ object GenExpression {
 
     case Expr.Cst(cst, tpe, loc) => cst match {
       case Ast.Constant.Unit =>
-        mv.visitFieldInsn(GETSTATIC, BackendObjType.Unit.jvmName.toInternalName,
-          BackendObjType.Unit.SingletonField.name, BackendObjType.Unit.toDescriptor)
+        val ins = BytecodeInstructions.GETSTATIC(BackendObjType.Unit.SingletonField)
+        ins(new BytecodeInstructions.F(mv))
 
       case Ast.Constant.Null =>
         mv.visitInsn(ACONST_NULL)
         AsmOps.castIfNotPrim(mv, JvmOps.getJvmType(tpe))
 
-      case Ast.Constant.Bool(true) =>
-        mv.visitInsn(ICONST_1)
-
-      case Ast.Constant.Bool(false) =>
-        mv.visitInsn(ICONST_0)
+      case Ast.Constant.Bool(b) =>
+        val ins = BytecodeInstructions.pushBool(b)
+        ins(new BytecodeInstructions.F(mv))
 
       case Ast.Constant.Char(c) =>
         compileInt(c)
@@ -88,11 +85,13 @@ object GenExpression {
       case Ast.Constant.BigDecimal(dd) =>
         // Can fail with NumberFormatException
         addSourceLine(mv, loc)
-        mv.visitTypeInsn(NEW, BackendObjType.BigDecimal.jvmName.toInternalName)
-        mv.visitInsn(DUP)
-        mv.visitLdcInsn(dd.toString)
-        mv.visitMethodInsn(INVOKESPECIAL, BackendObjType.BigDecimal.jvmName.toInternalName, "<init>",
-          AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false)
+        val ins = {
+          import BytecodeInstructions._
+          import BackendObjType._
+          NEW(BigDecimal.jvmName) ~
+          DUP() ~ pushString(dd.toString) ~ INVOKESPECIAL(BigDecimal.Constructor)
+        }
+        ins(new BytecodeInstructions.F(mv))
 
       case Ast.Constant.Int8(b) =>
         compileInt(b)
@@ -108,12 +107,14 @@ object GenExpression {
 
       case Ast.Constant.BigInt(ii) =>
         // Add source line number for debugging (can fail with NumberFormatException)
-        addSourceLine(mv, loc)
-        mv.visitTypeInsn(NEW, BackendObjType.BigInt.jvmName.toInternalName)
-        mv.visitInsn(DUP)
-        mv.visitLdcInsn(ii.toString)
-        mv.visitMethodInsn(INVOKESPECIAL, BackendObjType.BigInt.jvmName.toInternalName, "<init>",
-          AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false)
+        val ins = {
+          import BytecodeInstructions._
+          import BackendObjType._
+          addSourceLine(loc.beginLine) ~
+          NEW(BigInt.jvmName) ~
+            DUP() ~ pushString(ii.toString) ~ INVOKESPECIAL(BigInt.Constructor)
+        }
+        ins(new BytecodeInstructions.F(mv))
 
       case Ast.Constant.Str(s) =>
         mv.visitLdcInsn(s)
