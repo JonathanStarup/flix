@@ -18,6 +18,7 @@ package ca.uwaterloo.flix.language.phase.unification
 import ca.uwaterloo.flix.language.ast.SourceLocation
 import ca.uwaterloo.flix.util.{Formatter, InternalCompilerException, Result}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.{SortedMap, SortedSet}
 import scala.collection.mutable
 
@@ -58,14 +59,14 @@ object FastSetUnification {
     *
     * If a solution is too complex an [[TooComplexException]] exception is thrown.
     */
-  private val SizeThreshold: Int = 800
+  private val SizeThreshold: Int = 8000
 
   /**
     * The threshold for how many complex equation we will try to solve.
     *
     * If there are more than the threshold number of non-trivial equations an [[TooComplexException]] exception is thrown.
     */
-  private val ComplexThreshold: Int = 10
+  private val ComplexThreshold: Int = 100
 
   /**
     * The maximum number of permutations to try while solving a system of unification equations using SVE.
@@ -85,7 +86,9 @@ object FastSetUnification {
   /**
     * Enable debugging (prints information during set unification).
     */
-  private val Debugging: Boolean = false
+  private var Debugging: Boolean = false
+
+  private var OldDebugging: Boolean = false
 
   /**
     * Enable verification (i.e. check that the computed most-general unifier is a solution to the original equation system.)
@@ -171,14 +174,24 @@ object FastSetUnification {
         phase2VarPropagation()
         phase3VarAssignment()
         phase4TrivialAndRedundant()
-        phase5SVE()
+        phase5Subset()
+        phase6SVE()
         verifySolution()
         verifySolutionSize()
 
         Result.Ok(currentSubst)
       } catch {
         case ex: ConflictException => Result.Err((ex, currentEqns, currentSubst))
-        case ex: TooComplexException => Result.Err((ex, currentEqns, currentSubst))
+        case ex: TooComplexException if !Debugging =>
+          currentEqns = l
+          currentSubst = SetSubstitution.empty
+          OldDebugging = Debugging
+          Debugging = true
+          val res = solve()
+          Debugging = OldDebugging
+          res
+        case ex: TooComplexException =>
+          Result.Err((ex, currentEqns, currentSubst))
       }
     }
 
@@ -198,68 +211,93 @@ object FastSetUnification {
     }
 
     private def phase1ConstantPropagation(): Unit = {
-      debugln("-".repeat(80))
-      debugln("--- Phase 1: Constant Propagation")
-      // TODO this is lying
-      debugln("    (resolves all equations of the form: x = c where x is a var and c is univ/empty/constant/element)")
-      debugln("-".repeat(80))
-      if (currentEqns.nonEmpty) setPhase(1)
-      val s = propagateConstants(currentEqns)
-      updateState(s)
-      debugEquations()
-      debugSubstitution()
-      debugln()
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 1: Constant Propagation")
+        // TODO this is lying
+        debugln("    (resolves all equations of the form: x = c where x is a var and c is univ/empty/constant/element)")
+        debugln("-".repeat(80))
+        setPhase(1)
+        val s = propagateConstants(currentEqns)
+        updateState(s)
+        debugEquations()
+        debugSubstitution()
+        debugln()
+      }
     }
 
     private def phase2VarPropagation(): Unit = {
-      debugln("-".repeat(80))
-      debugln("--- Phase 2: Variable Propagation")
-      debugln("    (resolves all equations of the form: x = y where x and y are vars)")
-      debugln("-".repeat(80))
-      if (currentEqns.nonEmpty) setPhase(2)
-      val s = propagateVars(currentEqns)
-      updateState(s)
-      debugEquations()
-      debugSubstitution()
-      debugln()
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 2: Variable Propagation")
+        debugln("    (resolves all equations of the form: x = y where x and y are vars)")
+        debugln("-".repeat(80))
+          setPhase(2)
+        val s = propagateVars(currentEqns)
+        updateState(s)
+        debugEquations()
+        debugSubstitution()
+        debugln()
+      }
     }
 
     private def phase3VarAssignment(): Unit = {
-      debugln("-".repeat(80))
-      debugln("--- Phase 3: Variable Assignment")
-      debugln("    (resolves all equations of the form: x = t where x is free in t)")
-      debugln("-".repeat(80))
-      if (currentEqns.nonEmpty) setPhase(3)
-      val s = varAssignment(currentEqns)
-      updateState(s)
-      debugEquations()
-      debugSubstitution()
-      debugln()
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 3: Variable Assignment")
+        debugln("    (resolves all equations of the form: x = t where x is free in t)")
+        debugln("-".repeat(80))
+        setPhase(3)
+        val s = varAssignment(currentEqns)
+        updateState(s)
+        debugEquations()
+        debugSubstitution()
+        debugln()
+      }
     }
 
     private def phase4TrivialAndRedundant(): Unit = {
-      debugln("-".repeat(80))
-      debugln("--- Phase 4: Eliminate Trivial and Redundant Equations")
-      debugln("    (eliminates equations of the form X = X and duplicated equations)")
-      debugln("-".repeat(80))
-      if (currentEqns.nonEmpty) setPhase(4)
-      val s = eliminateTrivialAndRedundant(currentEqns)
-      updateState(s)
-      debugEquations()
-      debugSubstitution()
-      debugln()
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 4: Eliminate Trivial and Redundant Equations")
+        debugln("    (eliminates equations of the form X = X and duplicated equations)")
+        debugln("-".repeat(80))
+        setPhase(4)
+        val s = eliminateTrivialAndRedundant(currentEqns)
+        updateState(s)
+        debugEquations()
+        debugSubstitution()
+        debugln()
+      }
     }
 
-    private def phase5SVE(): Unit = {
-      debugln("-".repeat(80))
-      debugln("--- Phase 5: Set Unification")
-      debugln("    (resolves all remaining equations using SVE.)")
-      debugln("-".repeat(80))
-      if (currentEqns.nonEmpty) setPhase(5)
-      val newSubst = setUnifyAllPickSmallest(currentEqns)
-      updateState(Nil, newSubst) // Note: Pass Nil because SVE will have solved all equations.
-      debugSubstitution()
-      debugln()
+    private def phase5Subset(): Unit = {
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 5: Eliminate subset constraints")
+        debugln("    (resolves all equations of the form x ∪ y ∪ z ∪ e.. ∪ cst.. = e.. ∪ cst..)")
+        debugln("-".repeat(80))
+        setPhase(5)
+        val s = subtyping(currentEqns)
+        updateState(s)
+        debugEquations()
+        debugSubstitution()
+        debugln()
+      }
+    }
+
+    private def phase6SVE(): Unit = {
+      if (currentEqns.nonEmpty) {
+        debugln("-".repeat(80))
+        debugln("--- Phase 6: Set Unification")
+        debugln("    (resolves all remaining equations using SVE.)")
+        debugln("-".repeat(80))
+        setPhase(6)
+        val newSubst = setUnifyAllPickSmallest(currentEqns)
+        updateState(Nil, newSubst) // Note: Pass Nil because SVE will have solved all equations.
+        debugSubstitution()
+        debugln()
+      }
     }
 
     /**
@@ -450,6 +488,11 @@ object FastSetUnification {
             subst = subst.extended(x, Term.Univ, loc)
             changed = true
 
+          // Case 1.5: x ~ empty
+          case Equation(Term.Var(x), Term.Empty, loc) =>
+            subst = subst.extended(x, Term.Empty, loc)
+            changed = true
+
           // Case 2: x ~ c
           case Equation(Term.Var(x), c@Term.Cst(_), loc) =>
             subst = subst.extended(x, c, loc)
@@ -461,8 +504,8 @@ object FastSetUnification {
             changed = true
 
           // Case 4: x ∩ y ∩ !z ∩ ... ~ univ
-          case Equation(Term.Inter(None, posCsts, posVars, negElem, negCsts, negVars, rest), Term.Univ, loc) if
-            posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty && rest.isEmpty =>
+          case Equation(Term.Inter(None, posCsts, posVars, negElem, negCsts, negVars, restT), Term.Univ, loc) if
+            posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty =>
           {
             for (Term.Var(x) <- posVars) {
               subst = subst.extended(x, Term.Univ, loc)
@@ -472,11 +515,13 @@ object FastSetUnification {
               subst = subst.extended(x, Term.Empty, loc)
               changed = true
             }
+            rest = restT.map(t => Equation.mk(t, Term.Univ, loc)) ++ rest
+            if (restT.nonEmpty) changed = true
           }
 
           // Case 5: x ∪ y ∪ !z ∪ ... ~ empty
-          case Equation(Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest), Term.Empty, loc) if
-            posElem.isEmpty && posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty && rest.isEmpty =>
+          case Equation(Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, restT), Term.Empty, loc) if
+            posElem.isEmpty && posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty =>
           {
             for (Term.Var(x) <- posVars) {
               subst = subst.extended(x, Term.Empty, loc)
@@ -486,6 +531,8 @@ object FastSetUnification {
               subst = subst.extended(x, Term.Univ, loc)
               changed = true
             }
+            rest = restT.map(t => Equation.mk(t, Term.Empty, loc)) ++ rest
+            if (restT.nonEmpty) changed = true
           }
 
           case _ =>
@@ -694,6 +741,136 @@ object FastSetUnification {
     (result.reverse, SetSubstitution.empty)
   }
 
+  private def subtyping(l: List[Equation]): (List[Equation], SetSubstitution) = {
+    var pending = l
+    var subst = SetSubstitution.empty
+
+    // We iterate until no changes are detected.
+    var changed = true
+    while (changed) {
+      changed = false
+
+      var rest: List[Equation] = Nil
+      // OBS: subst.extended checks for conflicting mappings
+      for (e <- pending) {
+        e match {
+          case Equation(Term.Var(x), cst@Term.Cst(_), loc) if !changed =>
+            subst = subst.extended(x, cst, loc)
+            changed = true
+
+          case Equation(Term.Var(x), v@Term.Var(y), loc) if !changed =>
+            changed = true
+            if (x != y) {
+              subst = subst.extended(x, v, loc)
+            }
+
+          case Equation(
+            Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest),
+            cst@Term.Cst(_),
+            loc
+          ) if !changed &&
+            (posVars.nonEmpty || negVars.nonEmpty) &&
+            posElem.isEmpty && negElem.isEmpty && negCsts.isEmpty && rest.isEmpty &&
+            posCsts.sizeIs == 1 && posCsts.contains(cst)
+          =>
+            assert(posVars.intersect(negVars).isEmpty)
+            for (x <- posVars) {
+              subst = subst.extended(x.x, Term.mkInter(x, cst), loc)
+            }
+            for (x <- negVars) {
+              subst = subst.extended(x.x, Term.mkCompl(Term.mkInter(x, cst)), loc)
+            }
+            changed = true
+
+          case Equation(
+            Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest),
+            elem@Term.ElemSet(_),
+            loc
+          ) if !changed &&
+            (posVars.nonEmpty || negVars.nonEmpty) &&
+            posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty && rest.isEmpty &&
+            posElem.contains(elem)
+          =>
+            assert(posVars.intersect(negVars).isEmpty)
+            for (x <- posVars) {
+              subst = subst.extended(x.x, Term.mkInter(x, elem), loc)
+            }
+            for (x <- negVars) {
+              subst = subst.extended(x.x, Term.mkCompl(Term.mkInter(x, elem)), loc)
+            }
+            changed = true
+
+          case Equation(
+            v@Term.Var(_),
+            Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest),
+            loc
+          ) if !changed &&
+            (posVars.nonEmpty || negVars.nonEmpty) &&
+            posElem.isEmpty && posCsts.isEmpty && negElem.isEmpty && negCsts.isEmpty && rest.isEmpty &&
+            posVars.contains(v)
+          =>
+            assert(!negVars.contains(v))
+            assert(posVars.intersect(negVars).isEmpty)
+            for (x <- posVars - v) {
+              subst = subst.extended(x.x, Term.mkInter(x, v), loc)
+            }
+            for (x <- negVars) {
+              subst = subst.extended(x.x, Term.mkCompl(Term.mkInter(x, v)), loc)
+            }
+            changed = true
+
+          // TODO negated singleton atoms
+
+          case Equation(
+            Term.Union(posElem0, posCsts0, posVars0, negElem0, negCsts0, negVars0, rest0),
+            Term.Union(posElem1, posCsts1, posVars1, negElem1, negCsts1, negVars1, rest1),
+            loc
+          ) if !changed &&
+            (posVars0.nonEmpty || negVars0.nonEmpty) &&
+            posVars1.isEmpty && negVars1.isEmpty && rest0.isEmpty && rest1.isEmpty &&
+            posElem0 == posElem1 && posCsts0 == posCsts1 && negElem0 == negElem1 && negCsts0 == negCsts1 &&
+            posElem0.map(_.size).getOrElse(0) + posCsts0.size + negElem0.map(_.size).getOrElse(0) + negCsts0.size <= 2
+          =>
+            assert(posVars0.intersect(negVars0).isEmpty)
+            for (x <- posVars0) {
+              subst = subst.extended(x.x, Term.mkInter(x, Term.mkUnion(posElem0, posCsts0, Set.empty, negElem0, negCsts0, Set.empty, Nil)), loc)
+            }
+            for (x <- negVars0) {
+              subst = subst.extended(x.x, Term.mkCompl(Term.mkInter(x, Term.mkUnion(posElem0, posCsts0, Set.empty, negElem0, negCsts0, Set.empty, Nil))), loc)
+            }
+            changed = true
+
+          case Equation(
+            Term.Union(posElem0, posCsts0, posVars0, negElem0, negCsts0, negVars0, rest0),
+            Term.Union(posElem1, posCsts1, posVars1, negElem1, negCsts1, negVars1, rest1),
+            loc
+          ) if !changed &&
+            (posVars1.nonEmpty || negVars1.nonEmpty) &&
+              posVars0.isEmpty && negVars0.isEmpty && rest0.isEmpty && rest1.isEmpty &&
+              posElem0 == posElem1 && posCsts0 == posCsts1 && negElem0 == negElem1 && negCsts0 == negCsts1 &&
+              posElem0.map(_.size).getOrElse(0) + posCsts0.size + negElem0.map(_.size).getOrElse(0) + negCsts0.size <= 2
+          =>
+            assert(posVars0.intersect(negVars0).isEmpty)
+            for (x <- posVars1) {
+              subst = subst.extended(x.x, Term.mkInter(x, Term.mkUnion(posElem0, posCsts0, Set.empty, negElem0, negCsts0, Set.empty, Nil)), loc)
+            }
+            for (x <- negVars1) {
+              subst = subst.extended(x.x, Term.mkCompl(Term.mkInter(x, Term.mkUnion(posElem0, posCsts0, Set.empty, negElem0, negCsts0, Set.empty, Nil))), loc)
+            }
+            changed = true
+
+          case _ =>
+            rest = e :: rest
+        }
+      }
+      // INVARIANT: We apply the current substitution to all remaining equations.
+      pending = subst(rest, prop = true)
+    }
+
+    // Reverse the unsolved equations to ensure they are returned in the original order.
+    (pending.reverse, subst)
+  }
+
   /**
     * Given a unification equation system `l` computes a most-general unifier for all its equations.
     *
@@ -791,11 +968,95 @@ object FastSetUnification {
     case x :: xs =>
       val t0 = SetSubstitution.singleton(x, Term.Empty)(t)
       val t1 = SetSubstitution.singleton(x, Term.Univ)(t)
-      val se = successiveVariableElimination(propagation(Term.mkInter(t0, t1)), xs)
+      val se = successiveVariableElimination(planOmega(propagation(Term.mkInter(t0, t1))), xs)
 
       val f1 = propagation(Term.mkUnion(se(t0), Term.mkMinus(Term.Var(x), se(t1))))
       val st = SetSubstitution.singleton(x, f1)
       st ++ se
+  }
+
+  @tailrec
+  private def planOmega(t: Term): Term = {
+    coins(t, None) match {
+      case Some((eliminator, money)) if money > 20 =>
+        val newTerm = Term.mkUnion(
+          Term.mkInter(eliminator, replace(t, eliminator, Term.Univ)),
+          Term.mkInter(eliminator, replace(t, eliminator, Term.Empty))
+        )
+        val a = t.size
+        val b = newTerm.size
+        if (b > a*1.2) {
+          println(s"$t\n$newTerm")
+        }
+        planOmega(newTerm)
+      case _ => t
+    }
+  }
+
+  final val inc = 3
+  final val dec = 1
+
+  private def coins(t: Term, acc: Option[(Term, Int)]): Option[(Term, Int)] = t match {
+    case Term.Univ => acc
+    case Term.Empty => acc
+    case Term.Cst(_) => moveCoins(t, acc)
+    case Term.Var(_) => moveCoins(t, acc)
+    case Term.ElemSet(_) => moveCoins(t, acc)
+    case Term.Compl(t) => coins(t, acc)
+    case Term.Inter(posElem, posCsts, posVars, negElem, negCsts, negVars, rest) =>
+      var nacc = acc
+      for (e <- posElem) nacc = moveCoins(e, nacc)
+      for (c <- posCsts) nacc = moveCoins(c, nacc)
+      for (x <- posVars) nacc = moveCoins(x, nacc)
+      for (e <- negElem) nacc = moveCoins(e, nacc)
+      for (c <- negCsts) nacc = moveCoins(c, nacc)
+      for (x <- negVars) nacc = moveCoins(x, nacc)
+      for (t <- rest) nacc = coins(t, nacc)
+      nacc
+    case Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest) =>
+      var nacc = acc
+      for (e <- posElem) nacc = moveCoins(e, nacc)
+      for (c <- posCsts) nacc = moveCoins(c, nacc)
+      for (x <- posVars) nacc = moveCoins(x, nacc)
+      for (e <- negElem) nacc = moveCoins(e, nacc)
+      for (c <- negCsts) nacc = moveCoins(c, nacc)
+      for (x <- negVars) nacc = moveCoins(x, nacc)
+      for (t <- rest) nacc = coins(t, nacc)
+      nacc
+  }
+
+  private def moveCoins(t: Term, acc: Option[(Term, Int)]): Option[(Term, Int)] = {
+    acc match {
+      case Some((offer, count)) if offer == t => Some((offer, count+inc))
+      case Some((_, count)) if count <= 0 => Some((t, inc))
+      case Some((offer, count)) => Some((offer, count - dec))
+      case None => Some(t, inc)
+    }
+  }
+
+  /**
+    * replaces `x` by `target` in `t`
+    * @param t0 the term to replace in
+    * @param x the term to replace by `targer`, must be cst/elem/var
+    * @param target the term to use instead of `x`
+    */
+  private def replace(t0: Term, x: Term, target: Term): Term = t0 match {
+    case Term.Univ => t0
+    case Term.Empty => t0
+    case Term.Cst(_) => if (x == t0) target else t0
+    case Term.Var(_) => if (x == t0) target else t0
+    case Term.ElemSet(_) => if (x == t0) target else t0
+    case Term.Compl(t) =>
+      val c = replace(t, x, target)
+      if (c eq t) t0 else Term.mkCompl(c)
+    case Term.Inter(posElem, posCsts, posVars, negElem, negCsts, negVars, rest) =>
+      val atoms = posElem.iterator ++ posCsts.iterator ++ posVars.iterator ++ negElem.iterator.map(Term.mkCompl) ++ negCsts.iterator.map(Term.mkCompl) ++ negVars.iterator.map(Term.mkCompl)
+      val terms = atoms.map(replace(_, x, target)) ++ rest.iterator.map(replace(_, x, target))
+      Term.mkInter(terms)
+    case Term.Union(posElem, posCsts, posVars, negElem, negCsts, negVars, rest) =>
+      val atoms = posElem.iterator ++ posCsts.iterator ++ posVars.iterator ++ negElem.iterator.map(Term.mkCompl) ++ negCsts.iterator.map(Term.mkCompl) ++ negVars.iterator.map(Term.mkCompl)
+      val terms = atoms.map(replace(_, x, target)) ++ rest.iterator.map(replace(_, x, target))
+      Term.mkUnion(terms)
   }
 
   /**
@@ -1208,6 +1469,7 @@ object FastSetUnification {
       case (Term.Univ, _) => Equation(t2, Term.Univ, loc)
       case (Term.Empty, _) => Equation(t2, Term.Empty, loc)
       case (Term.ElemSet(_), _) => Equation(t2, t1, loc)
+      case (Term.Cst(_), _) => Equation(t2, t1, loc)
       case (_, Term.Var(_)) => Equation(t2, t1, loc)
       case _ => Equation(t1, t2, loc)
     }
@@ -1471,12 +1733,7 @@ object FastSetUnification {
       * (a) pos/neg elements (b) pos/neg constants, (c) pos/neg variables, and (d) other sub-terms.
       * Moreover, we look into those sub-terms and flatten any intersections we find within.
       */
-    final def mkInter(ts: List[Term]): Term = {
-      ts match {
-        case Nil => return Term.Univ
-        // OBS: do not short-circuit single element lists - some intersection creation relies on the re-computation
-        case _ => ()
-      }
+    final def mkInter(ts: IterableOnce[Term]): Term = {
       // Mutable data structures to hold elements, constants, variables, and other sub-terms.
       var posElemTerm0: Option[SortedSet[Int]] = None // None represents univ
       val posCstTerms = mutable.Set.empty[Term.Cst]
@@ -1485,7 +1742,7 @@ object FastSetUnification {
       val negCstTerms = mutable.Set.empty[Term.Cst]
       val negVarTerms = mutable.Set.empty[Term.Var]
       val restTerms = mutable.ListBuffer.empty[Term]
-      for (t <- ts) {
+      for (t <- ts.iterator) {
         t match {
           case Univ => // NOP - We do not have to include Univ in a intersection.
           case Empty => return Empty // If the intersection contains EMPTY then whole intersection is EMPTY.
@@ -1616,12 +1873,7 @@ object FastSetUnification {
     /**
       * Smart constructor for union (`∪`).
       */
-    final def mkUnion(ts: List[Term]): Term = {
-      ts match {
-        case Nil => return Term.Empty
-        // OBS: do not short-circuit single element lists - some union creation relies on the re-computation
-        case _ => ()
-      }
+    final def mkUnion(ts: IterableOnce[Term]): Term = {
       // Mutable data structures to hold elements, constants, variables, and other sub-terms.
       var posElemTerm0: SortedSet[Int] = SortedSet.empty
       val posCstTerms = mutable.Set.empty[Term.Cst]
@@ -1630,7 +1882,7 @@ object FastSetUnification {
       val negCstTerms = mutable.Set.empty[Term.Cst]
       val negVarTerms = mutable.Set.empty[Term.Var]
       val restTerms = mutable.ListBuffer.empty[Term]
-      for (t <- ts) {
+      for (t <- ts.iterator) {
         t match {
           case Empty => // NOP - We do not have to include Empty in a union.
           case Univ => return Univ // If the union contains UNIV then whole union is UNIV.
@@ -1841,13 +2093,26 @@ object FastSetUnification {
       case Equation(t1, t2, loc) =>
         val app1 = apply(t1)
         val app2 = apply(t2)
-        if ((app1 eq t1) && (app2 eq t2)) e else Equation.mk(app1, app2, loc)
+        if ((app1 eq t1) && (app2 eq t2)) e else {
+          Equation.mk(app1, app2, loc)
+        }
+    }
+
+    def applyWithProp(e: Equation): Equation = e match {
+      case Equation(t1, t2, loc) =>
+        val app1 = apply(t1)
+        val app2 = apply(t2)
+        if ((app1 eq t1) && (app2 eq t2)) e else {
+          Equation.mk(propagation(app1), propagation(app2), loc)
+        }
     }
 
     /**
       * Applies `this` substitution to the given list of equations `l`.
       */
-    def apply(l: List[Equation]): List[Equation] = l.map(apply)
+    def apply(l: List[Equation], prop: Boolean = false): List[Equation] = {
+      if (prop) l.map(applyWithProp) else l.map(apply)
+    }
 
     /**
       * Returns the number of bindings in `this` substitution.
