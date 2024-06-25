@@ -98,6 +98,8 @@ object WeededAst {
 
     case class Apply(exp: Expr, exps: List[Expr], loc: SourceLocation) extends Expr
 
+    case class Index(exp1: Expr, exp2: Expr, loc: SourceLocation) extends Expr
+
     case class Infix(exp1: Expr, exp2: Expr, exp3: Expr, loc: SourceLocation) extends Expr
 
     case class Lambda(fparam: FormalParam, exp: Expr, loc: SourceLocation) extends Expr

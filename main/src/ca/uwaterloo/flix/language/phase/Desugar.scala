@@ -489,6 +489,8 @@ object Desugar {
       val es = visitExps(exps)
       Expr.Apply(e, es, loc)
 
+    case WeededAst.Expr.Index(exp1, exp2, loc) => ???
+
     case WeededAst.Expr.Infix(exp1, exp2, exp3, loc) =>
       desugarInfix(exp1, exp2, exp3, loc)
 

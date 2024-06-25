@@ -1321,11 +1321,20 @@ object Parser2 {
     def expression(left: TokenKind = TokenKind.Eof, leftIsUnary: Boolean = false)(implicit s: State): Mark.Closed = {
       var lhs = exprDelimited()
       // Handle calls
-      while (at(TokenKind.ParenL)) {
-        val mark = openBefore(lhs)
-        arguments()
-        lhs = close(mark, TreeKind.Expr.Apply)
-        lhs = close(openBefore(lhs), TreeKind.Expr.Expr)
+      while (at(TokenKind.ParenL) || at(TokenKind.BracketL)) {
+        if (at(TokenKind.ParenL)) {
+          val mark = openBefore(lhs)
+          arguments()
+          lhs = close(mark, TreeKind.Expr.Apply)
+          lhs = close(openBefore(lhs), TreeKind.Expr.Expr)
+        } else /* if (at(TokenKind.BrackedL)) */ {
+          val mark = openBefore(lhs)
+          expect(TokenKind.BracketL, SyntacticContext.Expr.OtherExpr)
+          expression()
+          expect(TokenKind.BracketR, SyntacticContext.Expr.OtherExpr)
+          lhs = close(mark, TreeKind.Expr.Index)
+          lhs = close(openBefore(lhs), TreeKind.Expr.Expr)
+        }
       }
       // Handle record select after function call. Example: funcReturningRecord().field
       if (at(TokenKind.Hash) && nth(1) == TokenKind.NameLowerCase) {

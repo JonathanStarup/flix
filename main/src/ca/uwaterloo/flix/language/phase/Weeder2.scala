@@ -795,6 +795,7 @@ object Weeder2 {
         case TreeKind.Expr.Use => visitExprUseExpr(tree)
         case TreeKind.Expr.Literal => visitLiteralExpr(tree)
         case TreeKind.Expr.Apply => visitApplyExpr(tree)
+//        case TreeKind.Expr.Index => visitIndexExpr(tree)
         case TreeKind.Expr.Lambda => visitLambdaExpr(tree)
         case TreeKind.Expr.LambdaMatch => visitLambdaMatchExpr(tree)
         case TreeKind.Expr.Unary => visitUnaryExpr(tree)
@@ -1028,6 +1029,16 @@ object Weeder2 {
           }
       }
     }
+
+//    private def visitIndexExpr(tree: Tree): Validation[Expr, CompilationMessage] = {
+//      expect(tree, TreeKind.Expr.Index)
+//      flatMapN(pick(TreeKind.Expr.Expr, tree), pick(TreeKind.Expr.Expr)) {
+//        case (expr1, expr2) =>
+//          mapN(visitExpr(expr1), visitExpr(expr2)) {
+//            case (e1, e2) => Expr.Index()
+//          }
+//      }
+//    }
 
     private def pickArguments(tree: Tree): Validation[List[Expr], CompilationMessage] = {
       flatMapN(pick(TreeKind.ArgumentList, tree))(visitArguments)
