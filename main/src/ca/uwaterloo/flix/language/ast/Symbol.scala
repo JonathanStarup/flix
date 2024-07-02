@@ -449,7 +449,7 @@ object Symbol {
       */
     override def loc: SourceLocation = sym.loc
 
-    override val hashCode: Int = sym.hashCode
+    override val hashCode: Int = 3 * sym.hashCode + 5 * tpe.toString.hashCode
   }
 
   /**
