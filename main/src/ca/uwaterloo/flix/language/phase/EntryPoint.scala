@@ -231,12 +231,12 @@ object EntryPoint {
 
     // one of:
     // printUnlessUnit(func(args))
-    val printSym = root.defs(new Symbol.DefnSym(None, Nil, "printUnlessUnit", SourceLocation.Unknown)).sym
+    val printSym = root.defs(new Symbol.DefnSym(Nil, Nil, "printUnlessUnit", SourceLocation.Unknown)).sym
     val printTpe = Type.mkArrowWithEffect(oldEntryPoint.spec.declaredScheme.base.arrowResultType, Type.IO, Type.Unit, SourceLocation.Unknown)
     val printFunc = TypedAst.Expr.Def(printSym, printTpe, SourceLocation.Unknown)
     val print = TypedAst.Expr.Apply(printFunc, List(call), Type.Unit, Type.IO, SourceLocation.Unknown)
 
-    val sym = new Symbol.DefnSym(None, Nil, "main" + Flix.Delimiter, SourceLocation.Unknown)
+    val sym = new Symbol.DefnSym(Nil, Nil, "main" + Flix.Delimiter, SourceLocation.Unknown)
 
     TypedAst.Def(sym, spec, print)
   }

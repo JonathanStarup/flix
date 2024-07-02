@@ -228,7 +228,7 @@ object Monomorpher {
       *
       * Note: We use a concurrent linked queue (which is non-blocking) so threads can enqueue items without contention.
       */
-    private val defQueue: ConcurrentLinkedQueue[(Symbol.DefnSym, LoweredAst.Def, StrictSubstitution)] = new ConcurrentLinkedQueue
+    private val defQueue: ConcurrentLinkedQueue[(Symbol.DefnSymTyped, LoweredAst.Def, StrictSubstitution)] = new ConcurrentLinkedQueue
 
     /**
       * Returns `true` if the queue is non-empty.
@@ -244,7 +244,7 @@ object Monomorpher {
       *
       * Note: This is not synchronized.
       */
-    def enqueue(sym: Symbol.DefnSym, defn: LoweredAst.Def, subst: StrictSubstitution): Unit = synchronized {
+    def enqueue(sym: Symbol.DefnSymTyped, defn: LoweredAst.Def, subst: StrictSubstitution): Unit = synchronized {
       defQueue.add((sym, defn, subst))
     }
 
@@ -253,8 +253,8 @@ object Monomorpher {
       *
       * Note: This is not synchronized.
       */
-    def dequeueAll: Array[(Symbol.DefnSym, LoweredAst.Def, StrictSubstitution)] = synchronized {
-      val r = defQueue.toArray(Array.empty[(Symbol.DefnSym, LoweredAst.Def, StrictSubstitution)])
+    def dequeueAll: Array[(Symbol.DefnSymTyped, LoweredAst.Def, StrictSubstitution)] = synchronized {
+      val r = defQueue.toArray(Array.empty[(Symbol.DefnSymTyped, LoweredAst.Def, StrictSubstitution)])
       defQueue.clear()
       r
     }
@@ -271,38 +271,38 @@ object Monomorpher {
       *
       * -   (fst, (Int32, String) -> Int32) -> fst$1
       */
-    private val def2def: mutable.Map[(Symbol.DefnSym, Type), Symbol.DefnSym] = mutable.Map.empty
+    private val def2def: mutable.Map[(Symbol.DefnSym, Type), Symbol.DefnSymTyped] = mutable.Map.empty
 
     /**
       * Optionally returns the specialized def symbol for the given symbol `sym` and type `tpe`.
       */
-    def getDef2Def(sym: Symbol.DefnSym, tpe: Type): Option[Symbol.DefnSym] = synchronized {
+    def getDef2Def(sym: Symbol.DefnSym, tpe: Type): Option[Symbol.DefnSymTyped] = synchronized {
       def2def.get((sym, tpe))
     }
 
     /**
       * Adds a new def2def binding for the given symbol `sym1` and type `tpe`.
       */
-    def putDef2Def(sym1: Symbol.DefnSym, tpe: Type, sym2: Symbol.DefnSym): Unit = synchronized {
+    def putDef2Def(sym1: Symbol.DefnSym, tpe: Type, sym2: Symbol.DefnSymTyped): Unit = synchronized {
       def2def.put((sym1, tpe), sym2)
     }
 
     /**
       * A map used to collect specialized definitions, etc.
       */
-    private val specializedDefns: mutable.Map[Symbol.DefnSym, MonoAst.Def] = mutable.Map.empty
+    private val specializedDefns: mutable.Map[Symbol.DefnSymTyped, MonoAst.Def] = mutable.Map.empty
 
     /**
       * Adds a new specialized definition for the given def symbol `sym`.
       */
-    def putSpecializedDef(sym: Symbol.DefnSym, defn: MonoAst.Def): Unit = synchronized {
+    def putSpecializedDef(sym: Symbol.DefnSymTyped, defn: MonoAst.Def): Unit = synchronized {
       specializedDefns.put(sym, defn)
     }
 
     /**
       * Returns the specialized definitions as an immutable map.
       */
-    def toMap: Map[Symbol.DefnSym, MonoAst.Def] = synchronized {
+    def toMap: Map[Symbol.DefnSymTyped, MonoAst.Def] = synchronized {
       specializedDefns.toMap
     }
   }
@@ -373,7 +373,7 @@ object Monomorpher {
         // We use an empty substitution because the defs are non-parametric.
         // its important that non-parametric functions keep their symbol to not
         // invalidate the set of reachable functions.
-        mkFreshDefn(sym, defn, empty)
+        mkFreshDefn(Symbol.mkDefnSymTyped(sym, None), defn, empty)
     }
 
     /*
@@ -404,8 +404,8 @@ object Monomorpher {
       ctx.toMap,
       structs,
       effects,
-      root.entryPoint,
-      root.reachable,
+      root.entryPoint.map(sym => Symbol.mkDefnSymTyped(sym, None)), // assume that entrypoints are non-polymorphic
+      root.reachable.map(sym => Symbol.mkDefnSymTyped(sym, None)), // assume that reachable are non-polymorphic
       root.sources
     )
   }
@@ -426,7 +426,7 @@ object Monomorpher {
   /**
     * Adds a specialized def for the given symbol `freshSym` and def `defn` with the given substitution `subst`.
     */
-  private def mkFreshDefn(freshSym: Symbol.DefnSym, defn: LoweredAst.Def, subst: StrictSubstitution)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Unit = {
+  private def mkFreshDefn(freshSym: Symbol.DefnSymTyped, defn: LoweredAst.Def, subst: StrictSubstitution)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Unit = {
     // Specialize the formal parameters and introduce fresh local variable symbols.
     val (fparams, env0) = specializeFormalParams(defn.spec.fparams, subst)
 
@@ -672,13 +672,13 @@ object Monomorpher {
     *
     * The given type must be a normalized type.
     */
-  private def specializeDefSym(sym: Symbol.DefnSym, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSym = {
+  private def specializeDefSym(sym: Symbol.DefnSym, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSymTyped = {
     // Lookup the definition and its declared type.
     val defn = root.defs(sym)
 
     // Check if the function is non-polymorphic.
     if (defn.spec.tparams.isEmpty) {
-      defn.sym
+      Symbol.mkDefnSymTyped(defn.sym, None)
     } else {
       specializeDef(defn, tpe)
     }
@@ -689,7 +689,7 @@ object Monomorpher {
     *
     * The given type must be a normalized type.
     */
-  private def specializeSigSym(sym: Symbol.SigSym, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSym = {
+  private def specializeSigSym(sym: Symbol.SigSym, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSymTyped = {
     val sig = root.sigs(sym)
 
     // lookup the instance corresponding to this type
@@ -727,7 +727,7 @@ object Monomorpher {
     */
   private def sigSymToDefnSym(sigSym: Symbol.SigSym): Symbol.DefnSym = {
     val ns = sigSym.trt.namespace :+ sigSym.trt.name
-    new Symbol.DefnSym(None, ns, sigSym.name, sigSym.loc)
+    new Symbol.DefnSym(Nil, ns, sigSym.name, sigSym.loc)
   }
 
   /**
@@ -735,7 +735,7 @@ object Monomorpher {
     *
     * The given type must be a normalized type.
     */
-  private def specializeDef(defn: LoweredAst.Def, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSym = {
+  private def specializeDef(defn: LoweredAst.Def, tpe: Type)(implicit ctx: Context, root: LoweredAst.Root, flix: Flix): Symbol.DefnSymTyped = {
     // Unify the declared and actual type to obtain the substitution map.
     val subst = infallibleUnify(defn.spec.declaredScheme.base, tpe, defn.sym)
 
@@ -745,7 +745,7 @@ object Monomorpher {
         case None =>
           // Case 1: The function has not been specialized.
           // Generate a fresh specialized definition symbol.
-          val freshSym = Symbol.freshDefnSym(defn.sym)
+          val freshSym = Symbol.mkDefnSymTyped(defn.sym, Some(tpe))
 
           // Register the fresh symbol (and actual type) in the symbol2symbol map.
           ctx.putDef2Def(defn.sym, tpe, freshSym)

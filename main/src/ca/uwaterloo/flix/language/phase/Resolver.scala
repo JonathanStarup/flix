@@ -1324,7 +1324,7 @@ object Resolver {
           mapN(bVal) {
             b => ResolvedAst.Expr.ArrayLength(b, loc)
           }
-        
+
         case NamedAst.Expr.StructNew(_, _, _, _) => throw new RuntimeException("Joe todo")
         case NamedAst.Expr.StructGet(_, _, _) => throw new RuntimeException("Joe todo")
         case NamedAst.Expr.StructPut(_, _, _, _) => throw new RuntimeException("Joe todo")
@@ -3649,6 +3649,7 @@ object Resolver {
     case sym: Symbol.EffectSym => root.symbols(Name.mkUnlocatedNName(sym.namespace))(sym.name)
     case sym: Symbol.OpSym => root.symbols(Name.mkUnlocatedNName(sym.namespace))(sym.name)
     case sym: Symbol.ModuleSym => root.symbols(Name.mkUnlocatedNName(sym.ns.init))(sym.ns.last)
+    case sym: Symbol.DefnSymTyped => throw InternalCompilerException(s"unexpected symbol $sym", sym.loc)
     case sym: Symbol.VarSym => throw InternalCompilerException(s"unexpected symbol $sym", sym.loc)
     case sym: Symbol.KindedTypeVarSym => throw InternalCompilerException(s"unexpected symbol $sym", sym.loc)
     case sym: Symbol.UnkindedTypeVarSym => throw InternalCompilerException(s"unexpected symbol $sym", sym.loc)

@@ -49,7 +49,7 @@ object PredefinedTraits {
     * Returns the def symbol with the given `name` in the given namespace `ns`.
     */
   def lookupDefSym(ns: List[String], name: String, root: KindedAst.Root): Symbol.DefnSym = {
-    val key = new Symbol.DefnSym(None, ns, name, SourceLocation.Unknown)
+    val key = new Symbol.DefnSym(Nil, ns, name, SourceLocation.Unknown)
     root.defs.getOrElse(key, throw InternalCompilerException(s"The definition '$key' is not defined.", SourceLocation.Unknown)).sym
   }
 

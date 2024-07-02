@@ -24,14 +24,14 @@ object MonoAst {
 
   val empty: Root = Root(Map.empty, Map.empty, Map.empty, None, Set.empty, Map.empty)
 
-  case class Root(defs: Map[Symbol.DefnSym, Def],
+  case class Root(defs: Map[Symbol.DefnSymTyped, Def],
                   structs: Map[Symbol.StructSym, Struct],
                   effects: Map[Symbol.EffectSym, Effect],
-                  entryPoint: Option[Symbol.DefnSym],
-                  reachable: Set[Symbol.DefnSym],
+                  entryPoint: Option[Symbol.DefnSymTyped],
+                  reachable: Set[Symbol.DefnSymTyped],
                   sources: Map[Source, SourceLocation])
 
-  case class Def(sym: Symbol.DefnSym, spec: Spec, exp: Expr)
+  case class Def(sym: Symbol.DefnSymTyped, spec: Spec, exp: Expr)
 
   case class Spec(doc: Ast.Doc, ann: Ast.Annotations, mod: Ast.Modifiers, fparams: List[FormalParam], functionType: Type, retTpe: Type, eff: Type, loc: SourceLocation)
 
@@ -59,7 +59,7 @@ object MonoAst {
       def eff: Type = Type.Pure
     }
 
-    case class Def(sym: Symbol.DefnSym, tpe: Type, loc: SourceLocation) extends Expr {
+    case class Def(sym: Symbol.DefnSymTyped, tpe: Type, loc: SourceLocation) extends Expr {
       def eff: Type = Type.Pure
     }
 
