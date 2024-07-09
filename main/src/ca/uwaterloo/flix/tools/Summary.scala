@@ -15,7 +15,7 @@
  */
 package ca.uwaterloo.flix.tools
 
-import ca.uwaterloo.flix.language.ast.TypedAst.Root
+import ca.uwaterloo.flix.language.ast.TypedAst.{Expr, Root}
 import ca.uwaterloo.flix.language.ast.{Ast, Kind, SourceLocation, SourcePosition, Type, TypedAst}
 import ca.uwaterloo.flix.util.InternalCompilerException
 
@@ -25,6 +25,21 @@ object Summary {
 
   def printMarkdownFileSummary(root: Root, nsDepth: Option[Int] = None, minLines: Option[Int] = None): Unit = {
     val table = fileSummaryTable(root, nsDepth, minLines)
+
+    def rowString(row: List[String]) = row.mkString("| ", " | ", " |")
+
+    table match {
+      case headers :: rows =>
+        val line = headers.map(s => "-" * s.length)
+        println(rowString(headers))
+        println(rowString(line))
+        rows.foreach(row => println(rowString(row)))
+      case Nil => println("Empty")
+    }
+  }
+
+  def printMarkdownEffVarSummary(root: Root): Unit = {
+    val table = effectVariableTable(root)
 
     def rowString(row: List[String]) = row.mkString("| ", " | ", " |")
 
@@ -61,21 +76,71 @@ object Summary {
 
   private def defSummary(defn: TypedAst.Def, isInstance: Boolean): DefSummary = {
     val fun = if (isInstance) Function.InstanceFun(defn.sym) else Function.Def(defn.sym)
+    val l = lambdas(defn.exp)
     val eff = resEffect(defn.spec.eff)
-    DefSummary(fun, eff)
+    DefSummary(fun, l, eff)
   }
 
-  private def defSummary(sig: TypedAst.Sig): DefSummary = {
-    val fun = Function.TraitFunWithExp(sig.sym)
-    val eff = resEffect(sig.spec.eff)
-    DefSummary(fun, eff)
+  private def defSummary(sig: TypedAst.Sig): Option[DefSummary] = sig.exp match {
+    case Some(exp) =>
+      val fun = Function.TraitFunWithExp(sig.sym)
+      val l = lambdas(exp)
+      val eff = resEffect(sig.spec.eff)
+      Some(DefSummary(fun, l, eff))
+    case None =>
+      None
   }
 
   private def defSummaries(root: Root): List[DefSummary] = {
     val defs = root.defs.values.map(defSummary(_, isInstance = false))
     val instances = root.instances.values.flatten.flatMap(i => i.defs.map(defSummary(_, isInstance = true)))
-    val traits = root.traits.values.flatMap(t => t.sigs.filter(_.exp.isDefined).map(defSummary))
+    val traits = root.traits.values.flatMap(t => t.sigs.flatMap(defSummary))
     (defs ++ instances ++ traits).toList
+  }
+
+  private def effectVariableTable(root: Root): List[List[String]] = {
+    val sums = defSummaries(root)
+    val defCount = sums.length
+    val varSums = sums.map(s => {
+      val i = instanceEffectVariables(s)
+      val d = defEffectVariables(s)
+      if (!((i <= 1 && d == 0) || (i == 0 && d <= 1))) ???
+      (lambdaEffectVariables(s), i, d)
+    })
+    val (lambdaAffected, instanceAffected, defAffected) = varSums.foldLeft((0, 0, 0)){
+      case ((lamAcc, insAcc, defAcc), (lamCur, insCur, defCur)) =>
+        (lamAcc + (lamCur min 1), insAcc + (insCur min 1), defAcc + (defCur min 1))
+    }
+    val (lambdaTotal, instanceTotal, defTotal) = varSums.foldLeft((0, 0, 0)) {
+      case ((lamAcc, insAcc, defAcc), (lamCur, insCur, defCur)) =>
+        (lamAcc + lamCur, insAcc + insCur, defAcc + defCur)
+    }
+    val (lambdaMax, instanceMax, defMax) = varSums.foldLeft((0, 0, 0)) {
+      case ((lamAcc, insAcc, defAcc), (lamCur, insCur, defCur)) =>
+        (lamAcc max lamCur, insAcc max insCur, defAcc max defCur)
+    }
+    val builder = new RowBuilder()
+    builder.addRow(List("Abstraction-site", "variable increase", "%", "defs affected", "%", "inc. max"))
+    builder.addRow(List("Lambda", format(lambdaTotal), "?", format(lambdaAffected), formatP(100*lambdaAffected/(1.0 * defCount)), format(lambdaMax)))
+    builder.addRow(List("Instance", format(instanceTotal), "?", format(instanceAffected), formatP(100*instanceAffected/(1.0 * defCount)), format(instanceMax)))
+    builder.addRow(List("Def", format(defTotal), "?", format(defAffected), formatP(100*defAffected/(1.0 * defCount)), format(defMax)))
+    builder.getRows
+  }
+
+  private def lambdaEffectVariables(sum: DefSummary): Int = {
+    sum.lambdas
+  }
+
+  private def instanceEffectVariables(sum: DefSummary): Int = {
+    if (!sum.fun.isInstanceOf[Function.InstanceFun]) 0
+    else if (sum.eff == ResEffect.Pure) 0
+    else 1
+  }
+
+  private def defEffectVariables(sum: DefSummary): Int = {
+    if (sum.fun.isInstanceOf[Function.InstanceFun]) 0
+    else if (sum.eff == ResEffect.Pure) 0
+    else 1
   }
 
   private def fileData(sum: DefSummary)(implicit root: Root): FileData = {
@@ -144,6 +209,96 @@ object Summary {
     case _ => throw InternalCompilerException(s"Not an effect: '$eff'", eff.loc)
   }
 
+  private def lambdas(l: List[Expr]): Int = {
+    l.map(lambdas).sum
+  }
+
+  /**
+    * Returns the number of syntactic lambdas in the function body.
+    *
+    * OBS: newObject is not counted as a lambda.
+    */
+  private def lambdas(e: Expr): Int = {
+    e match {
+      case Expr.Lambda(_, exp, _, _) => 1 + lambdas(exp)
+
+      case Expr.Cst(_, _, _) => 0
+      case Expr.Var(_, _, _) => 0
+      case Expr.Def(_, _, _) => 0
+      case Expr.Sig(_, _, _) => 0
+      case Expr.Hole(_, _, _) => 0
+      case Expr.HoleWithExp(exp, _, _, _) => lambdas(exp)
+      case Expr.OpenAs(_, exp, _, _) => lambdas(exp)
+      case Expr.Use(_, _, exp, _) => lambdas(exp)
+      case Expr.Apply(exp, exps, _, _, _) => lambdas(exp :: exps)
+      case Expr.Unary(_, exp, _, _, _) => lambdas(exp)
+      case Expr.Binary(_, exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.Let(_, _, exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.LetRec(_, _, _, exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.Region(_, _) => 0
+      case Expr.Scope(_, _, exp, _, _, _) => lambdas(exp)
+      case Expr.IfThenElse(exp1, exp2, exp3, _, _, _) => lambdas(exp1) + lambdas(exp2) + lambdas(exp3)
+      case Expr.Stm(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.Discard(exp, _, _) => lambdas(exp)
+      case Expr.Match(exp, rules, _, _, _) => lambdas(exp :: rules.flatMap(r => r.exp :: r.guard.toList))
+      case Expr.TypeMatch(exp, rules, _, _, _) => lambdas(exp :: rules.map(_.exp))
+      case Expr.RestrictableChoose(_, exp, rules, _, _, _) => lambdas(exp :: rules.map(_.exp))
+      case Expr.Tag(_, exp, _, _, _) => lambdas(exp)
+      case Expr.RestrictableTag(_, exp, _, _, _) => lambdas(exp)
+      case Expr.Tuple(elms, _, _, _) => lambdas(elms)
+      case Expr.RecordEmpty(_, _) => 0
+      case Expr.RecordSelect(exp, _, _, _, _) => lambdas(exp)
+      case Expr.RecordExtend(_, exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.RecordRestrict(_, exp, _, _, _) => lambdas(exp)
+      case Expr.ArrayLit(exps, exp, _, _, _) => lambdas(exp :: exps)
+      case Expr.ArrayNew(exp1, exp2, exp3, _, _, _) => lambdas(exp1) + lambdas(exp2) + lambdas(exp3)
+      case Expr.ArrayLoad(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.ArrayLength(exp, _, _) => lambdas(exp)
+      case Expr.ArrayStore(exp1, exp2, exp3, _, _) => lambdas(exp1) + lambdas(exp2) + lambdas(exp3)
+      case Expr.VectorLit(exps, _, _, _) => lambdas(exps)
+      case Expr.VectorLoad(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.VectorLength(exp, _) => lambdas(exp)
+      case Expr.Ref(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.Deref(exp, _, _, _) => lambdas(exp)
+      case Expr.Assign(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.Ascribe(exp, _, _, _) => lambdas(exp)
+      case Expr.InstanceOf(exp, _, _) => lambdas(exp)
+      case Expr.CheckedCast(_, exp, _, _, _) => lambdas(exp)
+      case Expr.UncheckedCast(exp, _, _, _, _, _) => lambdas(exp)
+      case Expr.UncheckedMaskingCast(exp, _, _, _) => lambdas(exp)
+      case Expr.Without(exp, _, _, _, _) => lambdas(exp)
+      case Expr.TryCatch(exp, rules, _, _, _) => lambdas(exp :: rules.map(_.exp))
+      case Expr.TryWith(exp, _, rules, _, _, _) => lambdas(exp :: rules.map(_.exp))
+      case Expr.Do(_, exps, _, _, _) => lambdas(exps)
+      case Expr.InvokeConstructor(_, exps, _, _, _) => lambdas(exps)
+      case Expr.InvokeMethod(_, exp, exps, _, _, _) => lambdas(exp :: exps)
+      case Expr.InvokeStaticMethod(_, exps, _, _, _) => lambdas(exps)
+      case Expr.GetField(_, exp, _, _, _) => lambdas(exp)
+      case Expr.PutField(_, exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.GetStaticField(_, _, _, _) => 0
+      case Expr.PutStaticField(_, exp, _, _, _) => lambdas(exp)
+      case Expr.NewObject(_, _, _, _, methods, _) => lambdas(methods.map(_.exp))
+      case Expr.NewChannel(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.GetChannel(exp, _, _, _) => lambdas(exp)
+      case Expr.PutChannel(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.SelectChannel(rules, default, _, _, _) => lambdas(default.toList ++ rules.flatMap(r => List(r.exp, r.chan)))
+      case Expr.Spawn(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.ParYield(frags, exp, _, _, _) => lambdas(exp :: frags.map(_.exp))
+      case Expr.Lazy(exp, _, _) => lambdas(exp)
+      case Expr.Force(exp, _, _, _) => lambdas(exp)
+      case Expr.FixpointConstraintSet(cs, _, _) => cs.flatMap(_.head match {
+        case TypedAst.Predicate.Head.Atom(_, _, terms, _, _) => terms
+      }).map(lambdas).sum
+      case Expr.FixpointLambda(_, exp, _, _, _) => lambdas(exp)
+      case Expr.FixpointMerge(exp1, exp2, _, _, _) => lambdas(exp1) + lambdas(exp2)
+      case Expr.FixpointSolve(exp, _, _, _) => lambdas(exp)
+      case Expr.FixpointFilter(_, exp, _, _, _) => lambdas(exp)
+      case Expr.FixpointInject(exp, _, _, _, _) => lambdas(exp)
+      case Expr.FixpointProject(_, exp, _, _, _) => lambdas(exp)
+      case Expr.Error(_, _, _) => 0
+    }
+  }
+
   private val unknownSource = {
     Ast.Source(Ast.Input.Text("generated", "", stable = true), Array.emptyCharArray, stable = true)
   }
@@ -193,7 +348,7 @@ object Summary {
     def header: List[String] = List("Module") ++ FileData.header
   }
 
-  private sealed case class DefSummary(fun: Function, eff: ResEffect) {
+  private sealed case class DefSummary(fun: Function, lambdas: Int, eff: ResEffect) {
     def src: Ast.Source = loc.source
 
     def loc: SourceLocation = fun.loc
@@ -232,6 +387,9 @@ object Summary {
 
   /** Formats the given number `n`. */
   private def format(n: Int): String = f"$n%,d".replace(".", ",")
+
+  /** Formats the given number `n`. */
+  private def formatP(n: Double): String = f"$n%,.0f".replace(".", ",") + " %"
 
   /** Right-pads the given string `s` to length `l`. */
   private def padR(s: String, l: Int): String = s.padTo(l, ' ')
