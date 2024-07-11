@@ -15,13 +15,29 @@
  */
 package ca.uwaterloo.flix.tools
 
+import ca.uwaterloo.flix.api.Flix
 import ca.uwaterloo.flix.language.ast.TypedAst.{Expr, Root}
 import ca.uwaterloo.flix.language.ast.{Ast, Kind, SourceLocation, SourcePosition, Type, TypedAst}
+import ca.uwaterloo.flix.language.phase.typer.TypeConstraint
 import ca.uwaterloo.flix.util.InternalCompilerException
+import ca.uwaterloo.flix.language.ast.Symbol
 
+import java.util.concurrent.ConcurrentHashMap
+import scala.collection.immutable.SortedSet
 import scala.collection.mutable.ListBuffer
 
 object Summary {
+
+  private val constraintSets: ConcurrentHashMap[Symbol, List[TypeConstraint]] = new ConcurrentHashMap()
+
+  def addConstraints(defn: Symbol, cstrs: List[TypeConstraint])(implicit flix: Flix): Unit = {
+    if (flix.options.xsummary) {
+      if (constraintSets.containsKey(defn)) ???
+      else {
+        constraintSets.put(defn, cstrs)
+      }
+    }
+  }
 
   /**
     * Returns a table of the file data of the root
@@ -66,6 +82,7 @@ object Summary {
       if (!((i <= 1 && d == 0) || (i == 0 && d <= 1))) ???
       (lambdaEffectVariables(s), i, d)
     })
+    val totalEffVars = sums.map(_.effVars).sum
     val (lambdaAffected, instanceAffected, defAffected) = varSums.foldLeft((0, 0, 0)){
       case ((lamAcc, insAcc, defAcc), (lamCur, insCur, defCur)) =>
         (lamAcc + (lamCur min 1), insAcc + (insCur min 1), defAcc + (defCur min 1))
@@ -79,10 +96,11 @@ object Summary {
         (lamAcc max lamCur, insAcc max insCur, defAcc max defCur)
     }
     val table = new Table()
+    println(totalEffVars)
     table.addRow(List("Abstraction-site", "variable increase", "%", "defs affected", "%", "inc. max"))
-    table.addRow(List("Lambda", format(lambdaTotal), "?", format(lambdaAffected), formatP(100*lambdaAffected/(1.0 * defCount)), format(lambdaMax)))
-    table.addRow(List("Instance", format(instanceTotal), "?", format(instanceAffected), formatP(100*instanceAffected/(1.0 * defCount)), format(instanceMax)))
-    table.addRow(List("Def", format(defTotal), "?", format(defAffected), formatP(100*defAffected/(1.0 * defCount)), format(defMax)))
+    table.addRow(List("Lambda", format(lambdaTotal), formatP(100*(lambdaTotal + totalEffVars)/(1.0*totalEffVars) - 100), format(lambdaAffected), formatP(100*lambdaAffected/(1.0 * defCount)), format(lambdaMax)))
+    table.addRow(List("Instance", format(instanceTotal), formatP(100*(instanceTotal + totalEffVars)/(1.0*totalEffVars) - 100), format(instanceAffected), formatP(100*instanceAffected/(1.0 * defCount)), format(instanceMax)))
+    table.addRow(List("Def", format(defTotal), formatP(100*(defTotal + totalEffVars)/(1.0*totalEffVars) - 100), format(defAffected), formatP(100*defAffected/(1.0 * defCount)), format(defMax)))
     table
   }
 
@@ -106,8 +124,9 @@ object Summary {
   private def defSummary(defn: TypedAst.Def, isInstance: Boolean): DefSummary = {
     val fun = if (isInstance) FunctionSym.InstanceFun(defn.sym) else FunctionSym.Def(defn.sym)
     val ls = lambdas(defn.exp)
+    val es = effVars(defn.sym)
     val eff = resEffect(defn.spec.eff)
-    DefSummary(fun, ls, eff)
+    DefSummary(fun, ls, es, eff)
   }
 
   /** Returns a function summary for a signature, if it has implementation */
@@ -116,8 +135,9 @@ object Summary {
     case Some(exp) =>
       val fun = FunctionSym.TraitFunWithExp(sig.sym)
       val ls = lambdas(exp)
+      val es = effVars(sig.sym)
       val eff = resEffect(sig.spec.eff)
-      Some(DefSummary(fun, ls, eff))
+      Some(DefSummary(fun, ls, es, eff))
   }
 
   /** Returns a function summary for every function */
@@ -213,6 +233,39 @@ object Summary {
     case Type.IO => ResEffect.JustIO
     case _ if eff.kind == Kind.Eff => ResEffect.Poly
     case _ => throw InternalCompilerException(s"Not an effect: '$eff'", eff.loc)
+  }
+
+  private def effVars(sym: Symbol): Int = {
+    if (constraintSets.containsKey(sym)) {
+      effVars(constraintSets.get(sym))
+    } else ???
+  }
+
+  private def effVars(l: List[TypeConstraint]): Int = {
+    l.foldLeft(SortedSet.empty[Type.Var]){case (acc, c) => acc ++ effVars(c)}.size
+  }
+
+  private def effVars(t: TypeConstraint): SortedSet[Type.Var] = {
+    vars(t).filter(_.kind == Kind.Eff)
+  }
+
+  private def vars(l: List[TypeConstraint]): SortedSet[Type.Var] = {
+    l.foldLeft(SortedSet.empty[Type.Var]){case (acc, c) => acc ++ vars(c)}
+  }
+
+  private def vars(t: TypeConstraint): SortedSet[Type.Var] = t match {
+    case TypeConstraint.Equality(tpe1, tpe2, _) =>
+      tpe1.typeVars ++ tpe2.typeVars
+    case TypeConstraint.EqJvmConstructor(cvar, _, tpes, _) =>
+      SortedSet(cvar) ++ tpes.map(_.typeVars).foldLeft(SortedSet.empty[Type.Var])((a, b) => a ++ b)
+    case TypeConstraint.EqJvmMethod(mvar, tpe0, _, tpes, _) =>
+      SortedSet(mvar) ++ tpe0.typeVars ++ tpes.map(_.typeVars).foldLeft(SortedSet.empty[Type.Var])((a, b) => a ++ b)
+    case TypeConstraint.EqStaticJvmMethod(mvar, _, _, tpes, _) =>
+      SortedSet(mvar) ++ tpes.map(_.typeVars).foldLeft(SortedSet.empty[Type.Var])((a, b) => a ++ b)
+    case TypeConstraint.Trait(_, tpe, _) =>
+      tpe.typeVars
+    case TypeConstraint.Purification(_, eff1, eff2, _, nested) =>
+      eff1.typeVars ++ eff2.typeVars ++ vars(nested)
   }
 
   private def lambdas(l: List[Expr]): Int = {
@@ -372,7 +425,7 @@ object Summary {
     def header: List[String] = List("Module") ++ FileData.header
   }
 
-  private sealed case class DefSummary(fun: FunctionSym, lambdas: Int, eff: ResEffect) {
+  private sealed case class DefSummary(fun: FunctionSym, lambdas: Int, effVars: Int, eff: ResEffect) {
     def src: Ast.Source = loc.source
 
     def loc: SourceLocation = fun.loc
