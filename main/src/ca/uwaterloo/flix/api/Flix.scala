@@ -531,8 +531,13 @@ class Flix {
 
     // Print summary?
     if (options.xsummary) {
-      result.map(Summary.printMarkdownFileSummary(_, nsDepth = Some(1), minLines = Some(125)))
-      result.map(Summary.printMarkdownEffVarSummary)
+      result.map(root => {
+        val table1 = Summary.fileSummaryTable(root, nsDepth = Some(1), minLines = Some(125))
+        val table2 = Summary.effectVariableTable(root)
+        table1.getMarkdownLines.foreach(println)
+        println()
+        table2.getMarkdownLines.foreach(println)
+      })
     }
 
     // Return the result (which could contain soft failures).
