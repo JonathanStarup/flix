@@ -20,13 +20,13 @@
 enum StringBuilder[_: Region](##java.lang.StringBuilder)
 
 mod StringBuilder {
-    import java.lang.{StringBuilder => JStringBuilder};
 
     ///
     /// Returns a new mutable StringBuilder.
     ///
     pub def empty(_: Region[r]): StringBuilder[r] \ r =
-        StringBuilder(checked_ecast(unsafe new JStringBuilder()))
+        import java_new java.lang.StringBuilder(): ##java.lang.StringBuilder \ r as newStringBuilder;
+        StringBuilder(newStringBuilder())
 
     ///
     /// Append `x` to the StringBuilder `sb`.

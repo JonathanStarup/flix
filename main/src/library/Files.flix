@@ -388,7 +388,7 @@ mod Files {
         } catch {
             case ex: IOException =>
                 import java.lang.Throwable.getMessage(): String \ {};
-                Iterator.iterate(rc, constant(Some(Err(Generic(getMessage(checked_cast(ex)))))))
+                Iterator.iterate(rc, _ -> checked_ecast(Some(Err(Generic(getMessage(checked_cast(ex)))))))
         }
 
     ///
@@ -428,7 +428,7 @@ mod Files {
         } catch {
             case ex: IOException =>
                 import java.lang.Throwable.getMessage(): String \ {};
-                Iterator.iterate(rc, constant(Some(Err(Generic(getMessage(checked_cast(ex)))))))
+                Iterator.iterate(rc, _ -> checked_ecast(Some(Err(Generic(getMessage(checked_cast(ex)))))))
         }
 
     ///
@@ -531,10 +531,10 @@ mod Files {
             } catch {
                 case ex: IOException =>
                     import java.lang.Throwable.getMessage(): String \ {};
-                    Iterator.iterate(rc, constant(Some(Err(Generic(getMessage(checked_cast(ex)))))))
+                    Iterator.iterate(rc, _ -> checked_ecast(Some(Err(Generic(getMessage(checked_cast(ex)))))))
             }
         } else {
-            Iterator.iterate(rc, constant(Some(Err(Generic("The argument `chunkSize` has to be a non negative number when calling `File.readChunks`.")))))
+            Iterator.iterate(rc, _ -> checked_ecast(Some(Err(Generic("The argument `chunkSize` has to be a non negative number when calling `File.readChunks`.")))))
         }
 
     ///

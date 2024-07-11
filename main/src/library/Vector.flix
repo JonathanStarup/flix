@@ -520,7 +520,7 @@ mod Vector {
                 loop(i+1, karr -> k(putA!(mx, i, karr)))
             }
         };
-        Functor.map(Array.toVector, loop(0, eidentity))
+        Functor.map(Array.toVector, loop(0, q -> checked_ecast(q)))
     }
 
     ///
@@ -538,7 +538,7 @@ mod Vector {
                 loop(i+1, karr -> k(putA!(f(x), i, karr)))
             }
         };
-        Functor.map(Array.toVector, loop(0, eidentity))
+        Functor.map(Array.toVector, loop(0, q -> checked_ecast(q)))
     }
 
     ///
@@ -564,7 +564,7 @@ mod Vector {
                 loop(i+1, karr -> k(putA!(f(x, y), i, karr)))
             }
         };
-        Functor.map(Array.toVector, loop(0, eidentity))
+        Functor.map(Array.toVector, loop(0, q -> checked_ecast(q)))
     }
 
     ///

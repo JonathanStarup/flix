@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import java.util.{List => JList}
-
 ///
 /// The List type.
 ///
@@ -129,14 +127,14 @@ instance Iterable[List[a]] {
 }
 
 instance ToJava[List[a]] {
-    type Out = JList
+    type Out = ##java.util.List
     type Aef = IO
-    pub def toJava(l: List[a]): JList \ IO = Adaptor.toList(l)
+    pub def toJava(l: List[a]): ##java.util.List \ IO = Adaptor.toList(l)
 }
 
 instance FromJava[List[a]] {
-    type In = JList
-    pub def fromJava(l: JList): List[a] = Adaptor.fromList(l)
+    type In = ##java.util.List
+    pub def fromJava(l: ##java.util.List): List[a]  = Adaptor.fromList(l)
 }
 
 mod List {
@@ -280,7 +278,7 @@ mod List {
             case Nil     => k()
             case x :: xs => loop(xs, () -> if (f(x)) Some(x) else k())
         };
-        loop(l, constant(None))
+        loop(l, _ -> checked_ecast(None))
 
     ///
     /// Returns a list of all integers between `b` (inclusive) and `e` (exclusive).
@@ -339,7 +337,7 @@ mod List {
                 case ss :: _ => k(f(x, ss) :: ks)
                 case _       => unreachable!()})
         };
-        loop(l, eidentity)
+        loop(l, q -> checked_ecast(q))
 
     ///
     /// Returns the result of applying `f` to every element in `l`.
@@ -664,7 +662,7 @@ mod List {
             case Nil     => k(s)
             case x :: xs => loop(xs, ks -> k(f(x, ks)))
         };
-        loop(l, eidentity)
+        loop(l, q -> checked_ecast(q))
 
     ///
     /// Applies `f` to a start value `z` and all elements in `l` going from right to left.
@@ -704,7 +702,7 @@ mod List {
                 case Some(v) => Some(f(x, v))
             }))
         };
-        loop(l, eidentity)
+        loop(l, q -> checked_ecast(q))
 
     ///
     /// Returns the number of elements in `l` that satisfy the predicate `f`.
@@ -965,7 +963,7 @@ mod List {
             case (x :: rs1, y :: rs2) => loop(rs1, rs2, ks -> k(((z, zs) -> z :: zs) <$> f(x, y) <*> ks))
             case (_, _)               => k(Applicative.point(Nil))
         };
-        loop(xs, ys, eidentity)
+        loop(xs, ys, q -> checked_ecast(q))
 
 
 
@@ -1043,7 +1041,7 @@ mod List {
         };
         let len1 = length(l1);
         let len2 = length(l2);
-        loop(drop(len1 - len2, l1), drop(len2 - len1, l2), eidentity)
+        loop(drop(len1 - len2, l1), drop(len2 - len1, l2), q -> checked_ecast(q))
 
     ///
     /// Returns the result of mapping each element and combining the results.
