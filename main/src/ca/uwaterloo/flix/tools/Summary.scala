@@ -173,6 +173,7 @@ object Summary {
       FileSummary(Ast.Source(Ast.Input.Text(name, "", stable = true), Array.emptyCharArray, stable = true), FileData.zero)
 
     sums.groupBy(sum => prefixFileName(sum.src.name, nsDepth)).map {
+      case (_, List(sum)) => sum
       case (name, sums) => sums.foldLeft(zero(name))(comb).copy(src = zero(name).src)
     }.toList
   }

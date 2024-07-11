@@ -534,9 +534,9 @@ class Flix {
       result.map(root => {
         val table1 = Summary.fileSummaryTable(root, nsDepth = Some(1), minLines = Some(125))
         val table2 = Summary.effectVariableTable(root)
-        table1.getMarkdownLines.foreach(println)
+        table1.getLatexLines.foreach(println)
         println()
-        table2.getMarkdownLines.foreach(println)
+        table2.getLatexLines.foreach(println)
       })
     }
 
