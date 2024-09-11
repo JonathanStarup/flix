@@ -3454,7 +3454,7 @@ private def getRestrictableEnumIfAccessible(enum0: NamedAst.Declaration.Restrict
       }
     } catch {
       case ex: NoSuchMethodException =>
-        val candidateMethods = JvmOps.getMethods(clazz).filter(m => m.getName == methodName)
+        val candidateMethods = Jvm.getMethods(clazz).filter(_.getName == methodName)
         Result.Err(ResolutionError.UndefinedJvmMethod(clazz.getName, methodName, static, signature, candidateMethods, loc))
       // ClassNotFoundException:  Cannot happen because we already have the `Class` object.
       // NoClassDefFoundError:    Cannot happen because we already have the `Class` object.

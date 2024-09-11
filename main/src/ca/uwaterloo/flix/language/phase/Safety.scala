@@ -988,8 +988,8 @@ object Safety {
     val flixMethods = getFlixMethodSignatures(methods)
     val implemented = flixMethods.keySet
 
-    val javaMethods = getJavaMethodSignatures(clazz)
-    val objectMethods = getJavaMethodSignatures(classOf[Object]).keySet
+    val javaMethods = getJavaMethodSignatures(clazz, loc)
+    val objectMethods = getJavaMethodSignatures(classOf[Object], loc).keySet
     val canImplement = javaMethods.keySet
     val mustImplement = canImplement.filter(m => isAbstractMethod(javaMethods(m)) && !objectMethods.contains(m))
 
@@ -1029,11 +1029,15 @@ object Safety {
   /**
     * Get a Set of MethodSignatures representing the methods of `clazz`. Returns a map to allow subsequent reverse lookup.
     */
-  private def getJavaMethodSignatures(clazz: java.lang.Class[_]): Map[MethodSignature, java.lang.reflect.Method] = {
-    val methods = JvmOps.getMethods(clazz).filterNot(JvmOps.isStatic)
+  private def getJavaMethodSignatures(clazz: java.lang.Class[_], loc: SourceLocation): Map[MethodSignature, java.lang.reflect.Method] = {
+    val methods = Jvm.getStaticMethods(clazz)
     methods.foldLeft(Map.empty[MethodSignature, java.lang.reflect.Method]) {
       case (acc, m) =>
-        val signature = MethodSignature(m.getName, m.getParameterTypes.toList.map(Type.getFlixType), Type.getFlixType(m.getReturnType))
+        val signature = MethodSignature(
+          m.getName,
+          m.getParameterTypes.toList.map(Jvm.getType(_, reg = Type.IO, loc)),
+          Jvm.getTypeWithVoid(m.getReturnType, reg = Type.IO, loc)
+        )
         acc + (signature -> m)
     }
   }

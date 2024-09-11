@@ -16,7 +16,6 @@
 package ca.uwaterloo.flix.language.phase
 
 import ca.uwaterloo.flix.language.ast.Ast.CheckedCastType
-import ca.uwaterloo.flix.language.ast.Type.getFlixType
 import ca.uwaterloo.flix.language.ast.{Ast, KindedAst, Type, TypeConstructor, TypedAst}
 import ca.uwaterloo.flix.language.phase.unification.Substitution
 import ca.uwaterloo.flix.language.errors.TypeError
@@ -428,7 +427,7 @@ object TypeReconstruction {
     case KindedAst.Expr.InvokeConstructor2(clazz, exps, jvar, evar, loc) =>
       val es = exps.map(visitExp)
       val constructorTpe = subst(jvar)
-      val tpe = Type.getFlixType(clazz)
+      val tpe = Jvm.getType(clazz, reg = Type.IO, loc)
       val eff = subst(evar)
       constructorTpe match {
         case Type.Cst(TypeConstructor.JvmConstructor(constructor), _) =>
@@ -476,26 +475,26 @@ object TypeReconstruction {
 
     case KindedAst.Expr.InvokeConstructorOld(constructor, args, loc) =>
       val as = args.map(visitExp(_))
-      val tpe = getFlixType(constructor.getDeclaringClass)
+      val tpe = Jvm.getType(constructor.getDeclaringClass, reg = Type.IO, loc)
       val eff = Type.IO
       TypedAst.Expr.InvokeConstructor(constructor, as, tpe, eff, loc)
 
     case KindedAst.Expr.InvokeMethodOld(method, _, exp, args, loc) =>
       val e = visitExp(exp)
       val as = args.map(visitExp(_))
-      val tpe = getFlixType(method.getReturnType)
+      val tpe = Jvm.getType(method.getReturnType, reg = Type.IO, loc)
       val eff = Type.IO
       TypedAst.Expr.InvokeMethod(method, e, as, tpe, eff, loc)
 
     case KindedAst.Expr.InvokeStaticMethodOld(method, args, loc) =>
       val as = args.map(visitExp(_))
-      val tpe = getFlixType(method.getReturnType)
+      val tpe = Jvm.getType(method.getReturnType, reg = Type.IO, loc)
       val eff = Type.IO
       TypedAst.Expr.InvokeStaticMethod(method, as, tpe, eff, loc)
 
     case KindedAst.Expr.GetFieldOld(field, _, exp, loc) =>
       val e = visitExp(exp)
-      val tpe = getFlixType(field.getType)
+      val tpe = Jvm.getType(field.getType, reg = Type.IO, loc)
       val eff = Type.IO
       TypedAst.Expr.GetField(field, e, tpe, eff, loc)
 
@@ -507,7 +506,7 @@ object TypeReconstruction {
       TypedAst.Expr.PutField(field, e1, e2, tpe, eff, loc)
 
     case KindedAst.Expr.GetStaticField(field, loc) =>
-      val tpe = getFlixType(field.getType)
+      val tpe = Jvm.getType(field.getType, reg = Type.IO, loc)
       val eff = Type.IO
       TypedAst.Expr.GetStaticField(field, tpe, eff, loc)
 
@@ -518,7 +517,7 @@ object TypeReconstruction {
       TypedAst.Expr.PutStaticField(field, e, tpe, eff, loc)
 
     case KindedAst.Expr.NewObject(name, clazz, methods, loc) =>
-      val tpe = getFlixType(clazz)
+      val tpe = Jvm.getType(clazz, reg = Type.IO, loc)
       val eff = Type.IO
       val ms = methods map visitJvmMethod
       TypedAst.Expr.NewObject(name, clazz, tpe, eff, ms, loc)

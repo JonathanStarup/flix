@@ -19,6 +19,7 @@ import ca.uwaterloo.flix.api.Flix
 import ca.uwaterloo.flix.language.ast.KindedAst.Expr
 import ca.uwaterloo.flix.language.ast.shared.Scope
 import ca.uwaterloo.flix.language.ast.{Ast, Kind, KindedAst, Name, Scheme, SemanticOp, SourceLocation, Symbol, Type, TypeConstructor}
+import ca.uwaterloo.flix.language.phase.Jvm
 import ca.uwaterloo.flix.util.{InternalCompilerException, SubEffectLevel}
 import ca.uwaterloo.flix.language.phase.unification.Substitution
 
@@ -770,7 +771,7 @@ object ConstraintGen {
         // Γ ⊢ eᵢ ... : τ₁ ...    Γ ⊢ ι ~ JvmConstructor(k, eᵢ ...)
         // --------------------------------------------------------
         // Γ ⊢ new k(e₁ ...) : k
-        val clazzTpe = Type.getFlixType(clazz)
+        val clazzTpe = Jvm.getType(clazz, reg = Type.IO, loc)
         val (tpes, effs) = exps.map(visitExp).unzip
         val baseEffs = BaseEffects.of(clazz, loc)
         c.unifyType(jvar, Type.UnresolvedJvmType(Type.JvmMember.JvmConstructor(clazz, tpes), loc), loc) // unify constructor
@@ -816,40 +817,40 @@ object ConstraintGen {
         val resEff = evar
         (resTpe, resEff)
 
-      case Expr.InvokeConstructorOld(constructor, exps, _) =>
-        val classTpe = Type.getFlixType(constructor.getDeclaringClass)
+      case Expr.InvokeConstructorOld(constructor, exps, loc) =>
+        val classTpe = Jvm.getType(constructor.getDeclaringClass, reg = Type.IO, loc)
         val (_, _) = exps.map(visitExp).unzip
         val resTpe = classTpe
         val resEff = Type.IO
         (resTpe, resEff)
 
       case Expr.InvokeMethodOld(method, clazz, exp, exps, loc) =>
-        val classTpe = Type.getFlixType(clazz)
+        val classTpe = Jvm.getType(clazz, reg = Type.IO, loc)
         val (thisTpe, _) = visitExp(exp)
         c.unifyType(thisTpe, classTpe, loc)
         val (_, _) = exps.map(visitExp).unzip
-        val resTpe = Type.getFlixType(method.getReturnType)
+        val resTpe = Jvm.getType(method.getReturnType, reg = Type.IO, loc)
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.InvokeStaticMethodOld(method, exps, _) =>
+      case Expr.InvokeStaticMethodOld(method, exps, loc) =>
         val (_, _) = exps.map(visitExp).unzip
-        val resTpe = Type.getFlixType(method.getReturnType)
+        val resTpe = Jvm.getType(method.getReturnType, reg = Type.IO, loc)
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.GetFieldOld(field, clazz, exp, _) =>
-        val classType = Type.getFlixType(clazz)
-        val fieldType = Type.getFlixType(field.getType)
+      case Expr.GetFieldOld(field, clazz, exp, loc) =>
+        val classType = Jvm.getType(clazz, reg = Type.IO, loc)
+        val fieldType = Jvm.getType(field.getType, reg = Type.IO, loc)
         val (tpe, _) = visitExp(exp)
         c.expectType(expected = classType, actual = tpe, exp.loc)
         val resTpe = fieldType
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.PutField(field, clazz, exp1, exp2, _) =>
-        val fieldType = Type.getFlixType(field.getType)
-        val classType = Type.getFlixType(clazz)
+      case Expr.PutField(field, clazz, exp1, exp2, loc) =>
+        val fieldType = Jvm.getType(field.getType, reg = Type.IO, loc)
+        val classType = Jvm.getType(clazz, reg = Type.IO, loc)
         val (tpe1, _) = visitExp(exp1)
         val (tpe2, _) = visitExp(exp2)
         c.expectType(expected = classType, actual = tpe1, exp1.loc)
@@ -858,22 +859,22 @@ object ConstraintGen {
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.GetStaticField(field, _) =>
-        val fieldType = Type.getFlixType(field.getType)
+      case Expr.GetStaticField(field, loc) =>
+        val fieldType = Jvm.getType(field.getType, reg = Type.IO, loc)
         val resTpe = fieldType
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.PutStaticField(field, exp, _) =>
+      case Expr.PutStaticField(field, exp, loc) =>
         val (valueTyp, _) = visitExp(exp)
-        c.expectType(expected = Type.getFlixType(field.getType), actual = valueTyp, exp.loc)
+        c.expectType(expected = Jvm.getType(field.getType, reg = Type.IO, loc), actual = valueTyp, exp.loc)
         val resTpe = Type.Unit
         val resEff = Type.IO
         (resTpe, resEff)
 
-      case Expr.NewObject(_, clazz, methods, _) =>
+      case Expr.NewObject(_, clazz, methods, loc) =>
         methods.foreach(visitJvmMethod)
-        val resTpe = Type.getFlixType(clazz)
+        val resTpe = Jvm.getType(clazz, reg = Type.IO, loc)
         val resEff = Type.IO
         (resTpe, resEff)
 

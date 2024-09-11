@@ -17,9 +17,9 @@ package ca.uwaterloo.flix.api.lsp.provider.completion
 
 import ca.uwaterloo.flix.api.lsp.provider.completion.Completion.MethodCompletion
 import ca.uwaterloo.flix.language.errors.ResolutionError
-import ca.uwaterloo.flix.language.phase.jvm.JvmOps
+import ca.uwaterloo.flix.language.phase.Jvm
 
-import java.lang.reflect.{Method, Modifier}
+import java.lang.reflect.Method
 
 object InvokeStaticMethodCompleter {
   def getCompletions(e: ResolutionError.UndefinedJvmStaticField): Iterable[MethodCompletion] = {
@@ -28,9 +28,6 @@ object InvokeStaticMethodCompleter {
     }
   }
 
-  private def getMethods(clazz: Class[_]): List[Method] = {
-    val availableMethods = JvmOps.getMethods(clazz)
-    val staticMethods = availableMethods.filter(m => Modifier.isStatic(m.getModifiers))
-    staticMethods.sortBy(_.getName)
-  }
+  private def getMethods(clazz: Class[_]): List[Method] =
+    Jvm.getStaticMethods(clazz).sortBy(_.getName)
 }

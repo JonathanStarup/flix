@@ -19,6 +19,7 @@ import ca.uwaterloo.flix.api.Flix
 import ca.uwaterloo.flix.language.ast.shared.Scope
 import ca.uwaterloo.flix.language.ast.{Ast, Kind, RigidityEnv, SourceLocation, Symbol, Type, TypeConstructor}
 import ca.uwaterloo.flix.language.errors.TypeError
+import ca.uwaterloo.flix.language.phase.Jvm
 import ca.uwaterloo.flix.language.phase.jvm.JvmOps
 import ca.uwaterloo.flix.language.phase.unification.Unification
 import ca.uwaterloo.flix.util.collection.{ListMap, ListOps}
@@ -103,9 +104,9 @@ object TypeReduction {
 
     case Type.JvmToType(j0, _) =>
       simplify(j0, renv0, loc).map {
-        case (Type.Cst(TypeConstructor.JvmConstructor(constructor), _), _) => (Type.getFlixType(constructor.getDeclaringClass), true)
-        case (Type.Cst(TypeConstructor.JvmField(field), _), _) => (Type.getFlixType(field.getType), true)
-        case (Type.Cst(TypeConstructor.JvmMethod(method), _), _) => (Type.getFlixType(method.getReturnType), true)
+        case (Type.Cst(TypeConstructor.JvmConstructor(constructor), _), _) => (Jvm.getType(constructor.getDeclaringClass, reg = Type.IO, loc), true)
+        case (Type.Cst(TypeConstructor.JvmField(field), _), _) => (Jvm.getType(field.getType, reg = Type.IO, loc), true)
+        case (Type.Cst(TypeConstructor.JvmMethod(method), _), _) => (Jvm.getType(method.getReturnType, reg = Type.IO, loc), true)
         case (j, p) => (Type.JvmToType(j, loc), p)
       }
 
@@ -244,7 +245,7 @@ object TypeReduction {
     val typesAreKnown = isKnown(thisObj) && ts.forall(isKnown)
     if (!typesAreKnown) return JavaMethodResolution.UnresolvedTypes
 
-    Type.classFromFlixType(thisObj) match {
+    Jvm.getExactClass(thisObj) match {
       case Some(clazz) => retrieveMethod(clazz, methodName, ts, static = false, loc)
       case None => JavaMethodResolution.NotFound
     }
@@ -288,7 +289,7 @@ object TypeReduction {
     */
   private def candidateMethods(clazz: Class[?], methodName: String, ts: List[Type], static: Boolean): List[Method] = {
     // this list contains e.g. both `StringBuilder.appendCodePoint(int)` and `AbstractStringBuilder.appendCodePoint(int)`.
-    val allCandidates = JvmOps.getMethods(clazz).filter(isCandidateMethod(_, methodName, static, ts))
+    val allCandidates = Jvm.getMethods(clazz).filter(isCandidateMethod(_, methodName, static, ts))
 
     def notOverridden(method: Method): Boolean = {
       // this is a very hardcoded hack to make the standard library compile
@@ -310,18 +311,18 @@ object TypeReduction {
     */
   private def isCandidateMethod(method: Method, methodName: String, static: Boolean, ts: List[Type]): Boolean = {
     if (method.getName != methodName) return false
-    if (JvmOps.isStatic(method) != static) return false
+    if (Jvm.isStatic(method) != static) return false
     subtypeArguments(method.getParameterTypes, ts)
   }
 
   /** Returns `true` if the `arguments` types exactly match the `params` types. */
   private def exactArguments(params: Iterable[Class[?]], arguments: Iterable[Type]): Boolean = {
-    params.corresponds(arguments) { case (p, a) => Type.getFlixType(p) == a }
+    params.corresponds(arguments) { case (p, a) => Jvm.getType(p, reg = Type.IO, SourceLocation.Unknown) == a }
   }
 
   /** Returns `true` if the `arguments` types are subtypes of the `params` types. */
   private def subtypeArguments(params: Iterable[Class[?]], arguments: Iterable[Type]): Boolean = {
-    params.corresponds(arguments) { case (p, a) => isSubtype(a, Type.getFlixType(p)) }
+    params.corresponds(arguments) { case (p, a) => isSubtype(a, Jvm.getType(p, reg = Type.IO, SourceLocation.Unknown)) }
   }
 
   /** A lookup result of a Java field. */
@@ -347,18 +348,11 @@ object TypeReduction {
   private def lookupField(thisObj: Type, fieldName: String): JavaFieldResolution = {
     val typeIsKnown = isKnown(thisObj)
     if (!typeIsKnown) return JavaFieldResolution.UnresolvedTypes
-    Type.classFromFlixType(thisObj) match {
-      case Some(clazz) => retrieveField(clazz, fieldName)
-      case None => JavaFieldResolution.NotFound
-    }
-  }
-
-  /** Tries to find a field of `clazz` with the name `fieldName`. */
-  private def retrieveField(clazz: Class[?], fieldName: String): JavaFieldResolution = {
-    JvmOps.getField(clazz, fieldName) match {
-      case Some(field) => JavaFieldResolution.Resolved(field)
-      case None => JavaFieldResolution.NotFound
-    }
+    val opt = for {
+      clazz <- Jvm.getExactClass(thisObj)
+      field <- Jvm.getField(clazz, fieldName, static = false)
+    } yield JavaFieldResolution.Resolved(field)
+    opt.getOrElse(JavaFieldResolution.NotFound)
   }
 
   /**

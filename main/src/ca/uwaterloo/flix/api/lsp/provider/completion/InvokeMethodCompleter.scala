@@ -19,38 +19,19 @@ import ca.uwaterloo.flix.api.Flix
 import ca.uwaterloo.flix.api.lsp.Index
 import ca.uwaterloo.flix.api.lsp.provider.completion.Completion.MethodCompletion
 import ca.uwaterloo.flix.language.ast.{Name, Type, TypeConstructor, TypedAst}
+import ca.uwaterloo.flix.language.phase.Jvm
 import ca.uwaterloo.flix.language.phase.jvm.JvmOps
 
 import java.lang.reflect.Method
 
 object InvokeMethodCompleter {
   def getCompletions(obj: Type, name: Name.Ident, ctx: CompletionContext)(implicit flix: Flix, index: Index, root: TypedAst.Root): Iterable[MethodCompletion] = {
-    getClassOrInterface(obj) match {
+    Jvm.getExactClass(obj) match {
       case None => Nil
-      case Some(clazz) => getMethods(clazz).map {
+      case Some(clazz) => Jvm.getMethods(clazz).sortBy(_.getName).map {
         case m => MethodCompletion(name, m)
       }
     }
-  }
-
-  /**
-   * Returns all relevant methods available on the given `clazz`.
-   */
-  private def getMethods(clazz: Class[_]): List[Method] = {
-    val availableMethods = JvmOps.getMethods(clazz)
-    // TODO: Add more filtering
-    availableMethods.sortBy(_.getName)
-  }
-
-  /**
-   * Optionally returns the Java class object of the given type `tpe`.
-   *
-   * Returns `None` if `tpe` tpe is not a Java class or interface.
-   */
-  private def getClassOrInterface(tpe: Type): Option[Class[_]] = tpe match {
-    case Type.Cst(TypeConstructor.Str, _) => Some(classOf[String])
-    case Type.Cst(TypeConstructor.Native(clazz), _) => Some(clazz)
-    case _ => None
   }
 
 }

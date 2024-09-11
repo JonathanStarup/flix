@@ -5,6 +5,7 @@ import ca.uwaterloo.flix.language.CompilationMessage
 import ca.uwaterloo.flix.language.ast.shared.SecurityContext
 import ca.uwaterloo.flix.language.ast.{SourceLocation, Symbol, Type}
 import ca.uwaterloo.flix.language.fmt.FormatType
+import ca.uwaterloo.flix.language.phase.Jvm
 import ca.uwaterloo.flix.util.Formatter
 
 /**
@@ -76,7 +77,7 @@ object SafetyError {
          |${code(loc, "illegal cast")}
          |
          |From: ${FormatType.formatType(from, None)}
-         |To  : ${formatJavaType(to)}
+         |To  : ${formatJavaType(to, loc)}
          |""".stripMargin
     }
 
@@ -123,7 +124,7 @@ object SafetyError {
          |
          |${code(loc, "illegal cast")}
          |
-         |From: ${formatJavaType(from)}
+         |From: ${formatJavaType(from, loc)}
          |To  : ${FormatType.formatType(to, None)}
          |""".stripMargin
     }
@@ -586,8 +587,8 @@ object SafetyError {
     }
 
     override def explain(formatter: Formatter): Option[String] = Some({
-      val parameterTypes = (clazz +: method.getParameterTypes).map(formatJavaType)
-      val returnType = formatJavaType(method.getReturnType)
+      val parameterTypes = (clazz +: method.getParameterTypes).map(formatJavaType(_, loc))
+      val returnType = formatJavaType(method.getReturnType, loc)
       s"""
          | Try adding a method with the following signature:
          |
@@ -681,9 +682,9 @@ object SafetyError {
   /**
     * Format a Java type suitable for method implementation.
     */
-  private def formatJavaType(t: java.lang.Class[_]): String = {
+  private def formatJavaType(t: java.lang.Class[_], loc: SourceLocation): String = {
     if (t.isPrimitive || t.isArray)
-      Type.getFlixType(t).toString
+      Jvm.getTypeWithVoid(t, reg = Type.IO, loc).toString
     else
       s"##${t.getName}"
   }
