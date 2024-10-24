@@ -19,7 +19,7 @@ package ca.uwaterloo.flix.language.phase.unification.set
 import ca.uwaterloo.flix.language.ast.SourceLocation
 import ca.uwaterloo.flix.util.{CofiniteIntSet, InternalCompilerException}
 
-import scala.annotation.nowarn
+import scala.annotation.{nowarn, tailrec}
 import scala.collection.immutable.{SortedMap, SortedSet}
 import scala.collection.mutable
 
@@ -911,6 +911,44 @@ object SetFormula {
       case Some(e) => setElemOne(e, f)
       case _ => SortedMap.empty[Int, T]
     }
+  }
+
+  /**
+    * Returns `f` in a union of intersections of atoms (or [[Univ]] or [[Empty]]).
+    *
+    * `atom ::= x | c | e | !x | !c | !e`
+    *
+    */
+  def conjunctiveNormalForm(f: SetFormula): SetFormula = f match {
+    case Univ => Univ
+    case Empty => Empty
+    case c@Cst(_) => c
+    case v@Var(_) => v
+    case e@ElemSet(_) => e
+    case compl@Compl(Cst(_)) => compl
+    case compl@Compl(Var(_)) => compl
+    case compl@Compl(ElemSet(_)) => compl
+    case compl@Compl(_) => throw InternalCompilerException(s"Unexpected non-NNF formula $compl", SourceLocation.Unknown)
+    case Inter(elemPos, cstsPos, varsPos, elemNeg, cstsNeg, varsNeg, other) =>
+      removeIntersect(subformulasOf(elemPos, cstsPos, varsPos, elemNeg, cstsNeg, varsNeg, other.map(conjunctiveNormalForm)).toList, Univ)
+    case Union(elemPos, cstsPos, varsPos, elemNeg, cstsNeg, varsNeg, other) =>
+      Union(elemPos, cstsPos, varsPos, elemNeg, cstsNeg, varsNeg, other.map(conjunctiveNormalForm))
+  }
+
+  /** All `fs` and `acc` must be CNF. */
+  @tailrec
+  private def removeIntersect(fs: List[SetFormula], acc: SetFormula): SetFormula = fs match {
+    case Nil => acc
+    case hd :: tl =>
+      val inter = mkCnfInter(hd, acc)
+      if (inter == Empty) Empty else removeIntersect(tl, inter)
+  }
+
+  private def mkCnfInter(f1: SetFormula, f2: SetFormula): SetFormula = (f1, f2) match {
+    case (u1: Union, u2: Union) => mkUnionAll(u1.mapSubformulas(mkCnfInter(_, u2)))
+    case (disj, u: Union) => mkUnionAll(u.mapSubformulas(mkInter(_, disj)))
+    case (u: Union, disj) => mkUnionAll(u.mapSubformulas(mkInter(_, disj)))
+    case _ => mkInter(f1, f2)
   }
 
   /**
