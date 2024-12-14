@@ -435,23 +435,26 @@ object Parser2 {
   }
 
   /**
-    * Advance past current token if it is of kind in `kinds`. Otherwise wrap it in an error.
-    * Returns the found token if applicable.
+    *   - `KIND` is consumed and produces nothing returning `Some(KIND)`
+    *   - `ANY` (not consumed) produces [[TreeKind.ErrorTree]] (actively reported) returning `None`
+    *
+    * @param hint if some, will be used for non-comment related errors
     */
   private def expectAnyOpt(kinds: Set[TokenKind], context: SyntacticContext, hint: Option[String] = None)(implicit s: State): Option[TokenKind] = {
     eatAnyOpt(kinds) match {
-      case some@Some(_) => return some
-      case None => ()
+      case some@Some(_) =>
+        some
+      case None =>
+        val mark = open()
+        val error = nth(0) match {
+          case TokenKind.CommentLine => MisplacedComments(context, currentSourceLocation())
+          case TokenKind.CommentBlock => MisplacedComments(context, currentSourceLocation())
+          case TokenKind.CommentDoc => MisplacedDocComments(context, currentSourceLocation())
+          case at => UnexpectedToken(expected = NamedTokenSet.FromKinds(kinds), actual = Some(at), context, hint = hint, loc = currentSourceLocation())
+        }
+        closeWithError(mark, error)
+        None
     }
-    val mark = open()
-    val error = nth(0) match {
-      case TokenKind.CommentLine => MisplacedComments(context, currentSourceLocation())
-      case TokenKind.CommentBlock => MisplacedComments(context, currentSourceLocation())
-      case TokenKind.CommentDoc => MisplacedDocComments(context, currentSourceLocation())
-      case at => UnexpectedToken(expected = NamedTokenSet.FromKinds(kinds), actual = Some(at), context, hint = hint, loc = currentSourceLocation())
-    }
-    closeWithError(mark, error)
-    None
   }
 
   /**
