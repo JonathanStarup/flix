@@ -471,7 +471,6 @@ object Lexer {
           acceptUserDefinedOp()
         } else TokenKind.Underscore
       case c if c.isLetter => acceptName(c.isUpper)
-      case '0' if peek() == 'x' => acceptHexNumber()
       case c if isDigit(c) => acceptNumber()
       // User defined operators.
       case _ if isUserOp(c).isDefined =>
@@ -857,120 +856,8 @@ object Lexer {
     * NB. The char 'e' might appear as part of scientific notation.
     * */
   private def acceptNumber()(implicit s: State): TokenKind = {
-    var isDecimal = false
-    var isScientificNotation = false
-    var error: Option[TokenKind] = None
-    while (!eof()) {
-      peek() match {
-        case c if c.isDigit => advance()
-        // 'e' mark scientific notation if not handling a hex number
-        case 'e' =>
-          if (isScientificNotation) {
-            error = Some(TokenKind.Err(LexerError.DoubleEInNumber(sourceLocationAtCurrent())))
-          }
-          isScientificNotation = true
-          advance()
-        // Dots mark a decimal
-        case '.' if isDecimal =>
-          val loc = sourceLocationAtCurrent()
-          advance()
-          error = Some(TokenKind.Err(LexerError.DoubleDottedNumber(loc)))
-        case '.' if peekPeek().exists(c => c.isDigit || c == '.') =>
-          isDecimal = true
-          advance()
-        // '_' that is not in tail-position
-        case '_' if peekPeek().exists(_.isDigit) => advance()
-        // sequence of underscores
-        case '_' if peekPeek().contains('_') =>
-          // Consume the whole sequence of '_'
-          advance()
-          advance()
-          while (!eof() && peek() == '_') {
-            advance()
-          }
-          error = Some(TokenKind.Err(LexerError.DoubleUnderscoreInNumber(sourceLocationAtCurrent())))
-        // underscore in tail position
-        case '_' =>
-          advance()
-          return TokenKind.Err(LexerError.TrailingUnderscoreInNumber(sourceLocationAtCurrent()))
-        // If this is reached an explicit number type might occur next
-        case c =>
-          return c match {
-            case _ if isMatchCurrent("f32") => error.getOrElse(TokenKind.LiteralFloat32)
-            case _ if isMatchCurrent("f64") => error.getOrElse(TokenKind.LiteralFloat64)
-            case _ if isMatchCurrent("i8") => error.getOrElse(TokenKind.LiteralInt8)
-            case _ if isMatchCurrent("i16") => error.getOrElse(TokenKind.LiteralInt16)
-            case _ if isMatchCurrent("i32") => error.getOrElse(TokenKind.LiteralInt32)
-            case _ if isMatchCurrent("i64") => error.getOrElse(TokenKind.LiteralInt64)
-            case _ if isMatchCurrent("ii") => error.getOrElse(TokenKind.LiteralBigInt)
-            case _ if isMatchCurrent("ff") => error.getOrElse(TokenKind.LiteralBigDecimal)
-            case _ =>
-              if (isDecimal) {
-                error.getOrElse(TokenKind.LiteralFloat64)
-              } else {
-                error.getOrElse(TokenKind.LiteralInt32)
-              }
-          }
-      }
-    }
-    // The very last char of the file was a digit so return the appropriate token.
-    if (isDecimal) {
-      error.getOrElse(TokenKind.LiteralFloat64)
-    } else {
-      error.getOrElse(TokenKind.LiteralInt32)
-    }
-  }
-
-  /**
-    * Moves current position past a hex number literal. IE. "0x123i32" or "0xAB21CD"
-    * It is optional to have a trailing type indicator on number literals.
-    * If it is missing Flix defaults to `i32`.
-    * */
-  private def acceptHexNumber()(implicit s: State): TokenKind = {
-    advance() // consume 'x'
-    var error: Option[TokenKind] = if (peek() == '_') {
-      val loc = sourceLocationAtCurrent()
-      advance()
-      Some(TokenKind.Err(LexerError.HexLiteralStartsOnUnderscore(loc)))
-    } else {
-      None
-    }
-    while (!eof()) {
-      peek() match {
-        case c if isDigit(c) => advance()
-        // '_' that is not in tail-position
-        case '_' if peekPeek().exists(isDigit) => advance()
-        // sequence of underscores
-        case '_' if peekPeek().contains('_') =>
-          // Consume the whole sequence of '_'
-          advance()
-          advance()
-          while (!eof() && peek() == '_') {
-            advance()
-          }
-          error = Some(TokenKind.Err(LexerError.DoubleUnderscoreInNumber(sourceLocationAtCurrent())))
-        // underscore in tail position
-        case '_' =>
-          advance()
-          return TokenKind.Err(LexerError.TrailingUnderscoreInNumber(sourceLocationAtCurrent()))
-        // If this is reached an explicit number type might occur next
-        case c =>
-          return c match {
-            case _ if isMatchCurrent("f32") => error.getOrElse(TokenKind.LiteralFloat32)
-            case _ if isMatchCurrent("f64") => error.getOrElse(TokenKind.LiteralFloat64)
-            case _ if isMatchCurrent("i8") => error.getOrElse(TokenKind.LiteralInt8)
-            case _ if isMatchCurrent("i16") => error.getOrElse(TokenKind.LiteralInt16)
-            case _ if isMatchCurrent("i32") => error.getOrElse(TokenKind.LiteralInt32)
-            case _ if isMatchCurrent("i64") => error.getOrElse(TokenKind.LiteralInt64)
-            case _ if isMatchCurrent("ii") => error.getOrElse(TokenKind.LiteralBigInt)
-            case _ if isMatchCurrent("ff") => error.getOrElse(TokenKind.LiteralBigDecimal)
-            case _ =>
-              error.getOrElse(TokenKind.LiteralInt32)
-          }
-      }
-    }
-    // The very last char of the file was a digit so return the appropriate token.
-    error.getOrElse(TokenKind.LiteralInt32)
+    s.sc.advanceWhile(c => c.isDigit || c.isLetter || c == '.' || c == '_')
+    TokenKind.LiteralNumber
   }
 
   /** Moves current position past an annotation. IE. "@Test". */

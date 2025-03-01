@@ -67,6 +67,27 @@ object LexerError {
   }
 
   /**
+    * An error raised when a hex number has a dot in it.
+    * For instance `0x12.34`.
+    *
+    * @param loc The location of the dotted hex number literal.
+    */
+  case class DottedHexNumber(loc: SourceLocation) extends LexerError {
+    override def summary: String = s"Hex number has decimals."
+
+    override def message(formatter: Formatter): String = {
+      import formatter.*
+      s""">> Hex number has decimals.
+         |
+         |${code(loc, "Decimal dot is here.")}
+         |
+         |""".stripMargin
+    }
+
+    override def explain(formatter: Formatter): Option[String] = None
+  }
+
+  /**
     * An error raised when more than one `e` (used for scientific notation) is found in a number.
     *
     * @param loc The location of the double e number literal.

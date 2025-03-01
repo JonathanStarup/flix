@@ -1599,14 +1599,7 @@ object Parser2 {
         case TokenKind.KeywordUse => useExpr()
         case TokenKind.LiteralString
              | TokenKind.LiteralChar
-             | TokenKind.LiteralFloat32
-             | TokenKind.LiteralFloat64
-             | TokenKind.LiteralBigDecimal
-             | TokenKind.LiteralInt8
-             | TokenKind.LiteralInt16
-             | TokenKind.LiteralInt32
-             | TokenKind.LiteralInt64
-             | TokenKind.LiteralBigInt
+             | TokenKind.LiteralNumber
              | TokenKind.KeywordTrue
              | TokenKind.KeywordFalse
              | TokenKind.KeywordNull

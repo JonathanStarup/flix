@@ -22,7 +22,7 @@ import ca.uwaterloo.flix.language.ast.shared.*
 import ca.uwaterloo.flix.language.ast.{ChangeSet, Name, ReadAst, SemanticOp, SourceLocation, Symbol, SyntaxTree, Token, TokenKind, WeededAst}
 import ca.uwaterloo.flix.language.dbg.AstPrinter.*
 import ca.uwaterloo.flix.language.errors.ParseError.*
-import ca.uwaterloo.flix.language.errors.WeederError
+import ca.uwaterloo.flix.language.errors.{LexerError, WeederError}
 import ca.uwaterloo.flix.language.errors.WeederError.*
 import ca.uwaterloo.flix.util.Validation.*
 import ca.uwaterloo.flix.util.collection.{ArrayOps, Chain}
@@ -1016,14 +1016,7 @@ object Weeder2 {
           case TokenKind.KeywordFalse => Validation.Success(Expr.Cst(Constant.Bool(false), token.mkSourceLocation()))
           case TokenKind.LiteralString => Validation.Success(Constants.toStringCst(token))
           case TokenKind.LiteralChar => Validation.Success(Constants.toChar(token))
-          case TokenKind.LiteralInt8 => Validation.Success(Constants.toInt8(token))
-          case TokenKind.LiteralInt16 => Validation.Success(Constants.toInt16(token))
-          case TokenKind.LiteralInt32 => Validation.Success(Constants.toInt32(token))
-          case TokenKind.LiteralInt64 => Validation.Success(Constants.toInt64(token))
-          case TokenKind.LiteralBigInt => Validation.Success(Constants.toBigInt(token))
-          case TokenKind.LiteralFloat32 => Validation.Success(Constants.toFloat32(token))
-          case TokenKind.LiteralFloat64 => Validation.Success(Constants.toFloat64(token))
-          case TokenKind.LiteralBigDecimal => Validation.Success(Constants.toBigDecimal(token))
+          case TokenKind.LiteralNumber => Validation.Success(Constants.toNumber(token))
           case TokenKind.LiteralRegex => Validation.Success(Constants.toRegex(token))
           case TokenKind.NameLowerCase
                | TokenKind.NameUpperCase
@@ -1179,10 +1172,9 @@ object Weeder2 {
     }
 
     private def tryPickNumberLiteralToken(tree: Tree): Option[Token] = {
-      val NumberLiteralKinds = List(TokenKind.LiteralInt8, TokenKind.LiteralInt16, TokenKind.LiteralInt32, TokenKind.LiteralInt64, TokenKind.LiteralBigInt, TokenKind.LiteralFloat32, TokenKind.LiteralFloat64, TokenKind.LiteralBigDecimal)
       val maybeTree = tryPick(TreeKind.Expr.Literal, tree)
       maybeTree.flatMap(_.children(0) match {
-        case t@Token(_, _, _, _, _, _) if NumberLiteralKinds.contains(t.kind) => Some(t)
+        case t@Token(TokenKind.LiteralNumber, _, _, _, _, _) => Some(t)
         case _ => None
       })
     }
@@ -2350,9 +2342,8 @@ object Weeder2 {
 
     private def visitUnaryPat(tree: Tree)(implicit sctx: SharedContext): Validation[Pattern, CompilationMessage] = {
       expect(tree, TreeKind.Pattern.Unary)
-      val NumberLiteralKinds = List(TokenKind.LiteralInt8, TokenKind.LiteralInt16, TokenKind.LiteralInt32, TokenKind.LiteralInt64, TokenKind.LiteralBigInt, TokenKind.LiteralFloat32, TokenKind.LiteralFloat64, TokenKind.LiteralBigDecimal)
       val literalToken = ArrayOps.getOption(tree.children, 1) match {
-        case Some(t@Token(_, _, _, _, _, _)) if NumberLiteralKinds.contains(t.kind) => Some(t)
+        case Some(t@Token(TokenKind.LiteralNumber, _, _, _, _, _)) => Some(t)
         case _ => None
       }
       flatMapN(pick(TreeKind.Operator, tree))(_.children(0) match {
@@ -2409,6 +2400,34 @@ object Weeder2 {
           val error = MalformedInt(loc)
           sctx.errors.add(error)
           WeededAst.Expr.Error(error)
+      }
+    }
+
+    def toNumber(token: Token)(implicit sctx: SharedContext): Expr = {
+      val loc = token.mkSourceLocation()
+      var number = token.text
+      val isHex = if (number.startsWith("0x")) {
+        number = number.stripPrefix("0x")
+        true
+      } else {
+        false
+      }
+      if (isHex && number.startsWith("_")) sctx.errors.add(LexerError.HexLiteralStartsOnUnderscore(loc))
+      if (number.endsWith("_")) sctx.errors.add(LexerError.TrailingUnderscoreInNumber(loc))
+      if (number.contains("__")) sctx.errors.add(LexerError.DoubleUnderscoreInNumber(loc))
+      number = number.replace("_", "")
+      val dotCount = number.count(_ == '.')
+      if (dotCount > 1) sctx.errors.add(LexerError.DoubleDottedNumber(loc))
+      if (isHex && dotCount > 0) sctx.errors.add(LexerError.DottedHexNumber(loc))
+      val eCount = number.count(_ == 'e')
+      if (eCount > 1) sctx.errors.add(LexerError.DoubleEInNumber(loc))
+      if (isHex && eCount > 0) ??? // HexWithE
+      if (number.endsWith("i32")) {
+        ???
+      } else if (number.endsWith("i64")) {
+        ???
+      } else {
+        ???
       }
     }
 

@@ -179,16 +179,9 @@ sealed trait TokenKind {
       case TokenKind.HoleNamed => "<named hole>"
       case TokenKind.HoleVariable => "<variable hole>"
       case TokenKind.InfixFunction => "<infix function>"
-      case TokenKind.LiteralBigDecimal => "'<digits>ff'"
-      case TokenKind.LiteralBigInt => "'<digits>ii'"
       case TokenKind.LiteralDebugStringL => "'%{'"
       case TokenKind.LiteralDebugStringR => "'}'"
-      case TokenKind.LiteralFloat32 => "'<digits>f32'"
-      case TokenKind.LiteralFloat64 => "'<digits>f64'"
-      case TokenKind.LiteralInt8 => "'<digits>i8'"
-      case TokenKind.LiteralInt16 => "'<digits>i16'"
-      case TokenKind.LiteralInt32 => "'<digits>i32'"
-      case TokenKind.LiteralInt64 => "'<digits>i64'"
+      case TokenKind.LiteralNumber => "'<number>'"
       case TokenKind.LiteralRegex => "<regex>"
       case TokenKind.LiteralString => "<string>"
       case TokenKind.LiteralChar => "<char>"
@@ -345,17 +338,10 @@ sealed trait TokenKind {
          | TokenKind.KeywordRedef
          | TokenKind.KeywordStaticUppercase
          | TokenKind.ListHash
-         | TokenKind.LiteralBigDecimal
-         | TokenKind.LiteralBigInt
          | TokenKind.LiteralChar
          | TokenKind.LiteralDebugStringL
          | TokenKind.LiteralDebugStringR
-         | TokenKind.LiteralFloat32
-         | TokenKind.LiteralFloat64
-         | TokenKind.LiteralInt16
-         | TokenKind.LiteralInt32
-         | TokenKind.LiteralInt64
-         | TokenKind.LiteralInt8
+         | TokenKind.LiteralNumber
          | TokenKind.LiteralRegex
          | TokenKind.LiteralString
          | TokenKind.LiteralStringInterpolationL
@@ -522,16 +508,9 @@ sealed trait TokenKind {
          | TokenKind.KeywordUnsafely
          | TokenKind.KeywordUse
          | TokenKind.ListHash
-         | TokenKind.LiteralBigDecimal
-         | TokenKind.LiteralBigInt
          | TokenKind.LiteralChar
          | TokenKind.LiteralDebugStringL
-         | TokenKind.LiteralFloat32
-         | TokenKind.LiteralFloat64
-         | TokenKind.LiteralInt16
-         | TokenKind.LiteralInt32
-         | TokenKind.LiteralInt64
-         | TokenKind.LiteralInt8
+         | TokenKind.LiteralNumber
          | TokenKind.LiteralRegex
          | TokenKind.LiteralString
          | TokenKind.LiteralStringInterpolationL
@@ -679,14 +658,7 @@ sealed trait TokenKind {
          | TokenKind.KeywordQuery
          | TokenKind.LiteralString
          | TokenKind.LiteralChar
-         | TokenKind.LiteralFloat32
-         | TokenKind.LiteralFloat64
-         | TokenKind.LiteralBigDecimal
-         | TokenKind.LiteralInt8
-         | TokenKind.LiteralInt16
-         | TokenKind.LiteralInt32
-         | TokenKind.LiteralInt64
-         | TokenKind.LiteralBigInt
+         | TokenKind.LiteralNumber
          | TokenKind.KeywordTrue
          | TokenKind.KeywordFalse
          | TokenKind.LiteralRegex
@@ -1037,27 +1009,13 @@ object TokenKind {
 
   case object ListHash extends TokenKind
 
-  case object LiteralBigDecimal extends TokenKind
-
-  case object LiteralBigInt extends TokenKind
-
   case object LiteralChar extends TokenKind
 
   case object LiteralDebugStringL extends TokenKind
 
   case object LiteralDebugStringR extends TokenKind
 
-  case object LiteralFloat32 extends TokenKind
-
-  case object LiteralFloat64 extends TokenKind
-
-  case object LiteralInt8 extends TokenKind
-
-  case object LiteralInt16 extends TokenKind
-
-  case object LiteralInt32 extends TokenKind
-
-  case object LiteralInt64 extends TokenKind
+  case object LiteralNumber extends TokenKind
 
   case object LiteralRegex extends TokenKind
 
