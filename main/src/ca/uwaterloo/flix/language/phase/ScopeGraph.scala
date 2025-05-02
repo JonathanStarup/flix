@@ -92,7 +92,7 @@ object ScopeGraph {
       case Declaration.AssocTypeSig(_, _, _, _, _, _, loc) => throw InternalCompilerException(s"Unexpected declaration 'associated type sig' declaration", loc)
       case Declaration.AssocTypeDef(_, _, _, _, _, loc) => throw InternalCompilerException(s"Unexpected declaration 'associated type def' declaration", loc)
       case Declaration.Op(_, _, loc) => throw InternalCompilerException(s"Unexpected declaration 'op' declaration", loc)
-      case Declaration.Case(_, _, loc) => throw InternalCompilerException(s"Unexpected declaration 'case' declaration", loc)
+      case Declaration.Case(_, _, loc) => throw InternalCompilerException(s"Uneexpected declaration 'case' declaration", loc)
       case Declaration.RestrictableCase(_, _, loc) => throw InternalCompilerException(s"Unexpected declaration 'restrictable case' declaration", loc)
     }
     (File(usesAndImports, decls.toList), modules.toList)
