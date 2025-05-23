@@ -22,12 +22,11 @@ import ca.uwaterloo.flix.language.ast.ReducedAst.*
 import ca.uwaterloo.flix.language.ast.SemanticOp.*
 import ca.uwaterloo.flix.language.ast.shared.{Constant, ExpPosition}
 import ca.uwaterloo.flix.language.ast.{MonoType, *}
-import ca.uwaterloo.flix.language.phase.jvm.BytecodeInstructions.InstructionSet
+import ca.uwaterloo.flix.language.phase.jvm.BytecodeInstructions.*
 import ca.uwaterloo.flix.language.phase.jvm.JvmName.MethodDescriptor
 import ca.uwaterloo.flix.util.InternalCompilerException
 import org.objectweb.asm
 import org.objectweb.asm.*
-import org.objectweb.asm.Opcodes.*
 
 /**
   * Generate expression
@@ -49,152 +48,151 @@ object GenExpression {
   /**
     * Emits code for the given expression `exp0` to the given method `visitor` in the `currentClass`.
     */
-  def compileExpr(exp0: Expr)(implicit mv: MethodVisitor, ctx: MethodContext, root: Root, flix: Flix): Unit = exp0 match {
+  def compileExpr(exp0: Expr)(implicit ctx: MethodContext, root: Root, flix: Flix): InstructionSet = exp0 match {
 
     case Expr.Cst(cst, tpe, loc) => cst match {
       case Constant.Unit =>
-        mv.visitFieldInsn(GETSTATIC, BackendObjType.Unit.jvmName.toInternalName,
-          BackendObjType.Unit.SingletonField.name, BackendObjType.Unit.toDescriptor)
+        GETSTATIC(BackendObjType.Unit.SingletonField)
 
       case Constant.Null =>
-        mv.visitInsn(ACONST_NULL)
-        AsmOps.castIfNotPrim(mv, JvmOps.getJvmType(tpe))
+        pushNull() ~
+          cheat(mv => AsmOps.castIfNotPrim(mv, JvmOps.getJvmType(tpe)))
 
-      case Constant.Bool(true) =>
-        mv.visitInsn(ICONST_1)
-
-      case Constant.Bool(false) =>
-        mv.visitInsn(ICONST_0)
+      case Constant.Bool(b) =>
+        pushBool(b)
 
       case Constant.Char(c) =>
-        compileInt(c)
+        pushInt(c)
 
-      case Constant.Float32(f) =>
+      case Constant.Float32(f) => cheat(mv =>
         f match {
-          case 0f => mv.visitInsn(FCONST_0)
-          case 1f => mv.visitInsn(FCONST_1)
-          case 2f => mv.visitInsn(FCONST_2)
+          case 0f => mv.visitInsn(Opcodes.FCONST_0)
+          case 1f => mv.visitInsn(Opcodes.FCONST_1)
+          case 2f => mv.visitInsn(Opcodes.FCONST_2)
           case _ => mv.visitLdcInsn(f)
         }
+      )
 
-      case Constant.Float64(d) =>
+      case Constant.Float64(d) => cheat(mv =>
         d match {
-          case 0d => mv.visitInsn(DCONST_0)
-          case 1d => mv.visitInsn(DCONST_1)
+          case 0d => mv.visitInsn(Opcodes.DCONST_0)
+          case 1d => mv.visitInsn(Opcodes.DCONST_1)
           case _ => mv.visitLdcInsn(d)
         }
+      )
 
       case Constant.BigDecimal(dd) =>
-        // Can fail with NumberFormatException
-        addSourceLine(mv, loc)
-        mv.visitTypeInsn(NEW, BackendObjType.BigDecimal.jvmName.toInternalName)
-        mv.visitInsn(DUP)
-        mv.visitLdcInsn(dd.toString)
-        mv.visitMethodInsn(INVOKESPECIAL, BackendObjType.BigDecimal.jvmName.toInternalName, "<init>",
-          AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false)
+        // Add source line number for debugging (can fail with NumberFormatException)
+        addLoc(loc) ~
+          NEW(BackendObjType.BigDecimal.jvmName) ~
+          DUP() ~
+          pushString(dd.toString) ~
+          cheat(_.visitMethodInsn(
+            INVOKESPECIAL, BackendObjType.BigDecimal.jvmName.toInternalName, "<init>", AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false
+          ))
 
       case Constant.Int8(b) =>
-        compileInt(b)
+        pushInt(b)
 
       case Constant.Int16(s) =>
-        compileInt(s)
+        pushInt(s)
 
       case Constant.Int32(i) =>
-        compileInt(i)
+        pushInt(i)
 
       case Constant.Int64(l) =>
-        compileLong(l)
+        cheat(mv => compileLong(l)(mv))
 
       case Constant.BigInt(ii) =>
         // Add source line number for debugging (can fail with NumberFormatException)
-        addSourceLine(mv, loc)
-        mv.visitTypeInsn(NEW, BackendObjType.BigInt.jvmName.toInternalName)
-        mv.visitInsn(DUP)
-        mv.visitLdcInsn(ii.toString)
-        mv.visitMethodInsn(INVOKESPECIAL, BackendObjType.BigInt.jvmName.toInternalName, "<init>",
-          AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false)
+        addLoc(loc) ~
+          NEW(BackendObjType.BigInt.jvmName) ~
+          DUP() ~
+          pushString(ii.toString) ~
+          cheat(_.visitMethodInsn(
+            INVOKESPECIAL, BackendObjType.BigInt.jvmName.toInternalName, "<init>", AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Void), false
+          ))
 
       case Constant.Str(s) =>
-        mv.visitLdcInsn(s)
+        pushString(s)
 
       case Constant.Regex(patt) =>
         // Add source line number for debugging (can fail with PatternSyntaxException)
-        addSourceLine(mv, loc)
-        mv.visitLdcInsn(patt.pattern)
-        mv.visitMethodInsn(INVOKESTATIC, JvmName.Regex.toInternalName, "compile",
-          AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Regex), false)
+        addLoc(loc) ~
+          pushString(patt.pattern) ~
+          cheat(_.visitMethodInsn(
+            INVOKESTATIC, JvmName.Regex.toInternalName, "compile", AsmOps.getMethodDescriptor(List(JvmType.String), JvmType.Regex), false
+          ))
 
       case Constant.RecordEmpty =>
-        // We get the JvmType of the class for the RecordEmpty
-        val classType = BackendObjType.RecordEmpty
-        // Instantiating a new object of tuple
-        mv.visitFieldInsn(GETSTATIC, classType.jvmName.toInternalName, BackendObjType.RecordEmpty.SingletonField.name, classType.toDescriptor)
+        GETSTATIC(BackendObjType.RecordEmpty.SingletonField)
 
     }
 
     case Expr.Var(sym, tpe, _) =>
       val varType = JvmOps.getJvmType(tpe)
       val xLoad = AsmOps.getLoadInstruction(varType)
-      mv.visitVarInsn(xLoad, sym.getStackOffset(ctx.localOffset))
+      cheat(_.visitVarInsn(xLoad, sym.getStackOffset(ctx.localOffset)))
 
     case Expr.ApplyAtomic(op, exps, tpe, _, loc) => op match {
 
-      case AtomicOp.Closure(sym) =>
+      case AtomicOp.Closure(sym) => cheat(mv => {
         // JvmType of the closure
         val jvmType = JvmOps.getClosureClassType(sym)
         // new closure instance
-        mv.visitTypeInsn(NEW, jvmType.name.toInternalName)
+        mv.visitTypeInsn(Opcodes.NEW, jvmType.name.toInternalName)
         // Duplicate
-        mv.visitInsn(DUP)
+        mv.visitInsn(Opcodes.DUP)
         mv.visitMethodInsn(INVOKESPECIAL, jvmType.name.toInternalName, JvmName.ConstructorMethod, MethodDescriptor.NothingToVoid.toDescriptor, false)
         // Capturing free args
         for ((arg, i) <- exps.zipWithIndex) {
           val erasedArgType = JvmOps.getErasedJvmType(arg.tpe)
-          mv.visitInsn(DUP)
+          mv.visitInsn(Opcodes.DUP)
           compileExpr(arg)
-          mv.visitFieldInsn(PUTFIELD, jvmType.name.toInternalName, s"clo$i", erasedArgType.toDescriptor)
+          mv.visitFieldInsn(Opcodes.PUTFIELD, jvmType.name.toInternalName, s"clo$i", erasedArgType.toDescriptor)
         }
+      })
 
       case AtomicOp.Unary(sop) =>
         val List(exp) = exps
         compileExpr(exp)
 
-        sop match {
+        cheat(mv => sop match {
           case SemanticOp.BoolOp.Not =>
             val condElse = new Label()
             val condEnd = new Label()
-            mv.visitJumpInsn(IFNE, condElse)
-            mv.visitInsn(ICONST_1)
-            mv.visitJumpInsn(GOTO, condEnd)
+            mv.visitJumpInsn(Opcodes.IFNE, condElse)
+            mv.visitInsn(Opcodes.ICONST_1)
+            mv.visitJumpInsn(Opcodes.GOTO, condEnd)
             mv.visitLabel(condElse)
-            mv.visitInsn(ICONST_0)
+            mv.visitInsn(Opcodes.ICONST_0)
             mv.visitLabel(condEnd)
 
-          case Float32Op.Neg => mv.visitInsn(FNEG)
+          case Float32Op.Neg => mv.visitInsn(Opcodes.FNEG)
 
-          case Float64Op.Neg => mv.visitInsn(DNEG)
+          case Float64Op.Neg => mv.visitInsn(Opcodes.DNEG)
 
           case Int8Op.Neg =>
-            mv.visitInsn(INEG)
-            mv.visitInsn(I2B) // Sign extend so sign bit is also changed
+            mv.visitInsn(Opcodes.INEG)
+            mv.visitInsn(Opcodes.I2B) // Sign extend so sign bit is also changed
 
           case Int16Op.Neg =>
-            mv.visitInsn(INEG)
-            mv.visitInsn(I2S) // Sign extend so sign bit is also changed
+            mv.visitInsn(Opcodes.INEG)
+            mv.visitInsn(Opcodes.I2S) // Sign extend so sign bit is also changed
 
-          case Int32Op.Neg => mv.visitInsn(INEG)
+          case Int32Op.Neg => mv.visitInsn(Opcodes.INEG)
 
-          case Int64Op.Neg => mv.visitInsn(LNEG)
+          case Int64Op.Neg => mv.visitInsn(Opcodes.LNEG)
 
           case Int8Op.Not | Int16Op.Not | Int32Op.Not =>
-            mv.visitInsn(ICONST_M1)
-            mv.visitInsn(IXOR)
+            mv.visitInsn(Opcodes.ICONST_M1)
+            mv.visitInsn(Opcodes.IXOR)
 
           case Int64Op.Not =>
-            mv.visitInsn(ICONST_M1)
-            mv.visitInsn(I2L)
-            mv.visitInsn(LXOR)
-        }
+            mv.visitInsn(Opcodes.ICONST_M1)
+            mv.visitInsn(Opcodes.I2L)
+            mv.visitInsn(Opcodes.LXOR)
+        })
 
       case AtomicOp.Binary(sop) =>
         val List(exp1, exp2) = exps
@@ -538,7 +536,7 @@ object GenExpression {
 
           case StringOp.Concat =>
             throw InternalCompilerException(s"Unexpected BinaryOperator StringOp.Concat. It should have been eliminated by Simplifier", loc)
-        }
+        })
 
       case AtomicOp.Region =>
         //!TODO: For now, just emit null
