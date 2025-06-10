@@ -17,6 +17,7 @@
 package ca.uwaterloo.flix.language.phase.jvm
 
 import ca.uwaterloo.flix.api.Flix
+import ca.uwaterloo.flix.language.ast.ReducedAst.Root
 import ca.uwaterloo.flix.language.ast.{ReducedAst, SourceLocation, Symbol}
 import ca.uwaterloo.flix.language.phase.jvm.BackendObjType.mkClassName
 import ca.uwaterloo.flix.language.phase.jvm.BytecodeInstructions.*
@@ -47,7 +48,6 @@ sealed trait BackendObjType {
     case BackendObjType.Tag(tpes) => JvmName(RootPackage, mkClassName("Tag", tpes))
     case BackendObjType.AbstractArrow(args, result) => JvmName(RootPackage, mkClassName(s"Clo${args.length}", args :+ result))
     case BackendObjType.Arrow(args, result) => JvmName(RootPackage, mkClassName(s"Fn${args.length}", args :+ result))
-    case BackendObjType.Defn(sym) => JvmName(sym.namespace, JvmName.mkClassName("Def", sym.name))
     case BackendObjType.RecordEmpty => JvmName(RootPackage, mkClassName(s"RecordEmpty"))
     case BackendObjType.RecordExtend(value) => JvmName(RootPackage, mkClassName("RecordExtend", value))
     case BackendObjType.Record => JvmName(RootPackage, mkClassName("Record"))
@@ -723,8 +723,6 @@ object BackendObjType {
       ARETURN()
     }
   }
-
-  case class Defn(sym: Symbol.DefnSym) extends BackendObjType
 
   case object RecordEmpty extends BackendObjType {
     def genByteCode()(implicit flix: Flix): Array[Byte] = {
@@ -1513,27 +1511,28 @@ object BackendObjType {
 
   case object Main extends BackendObjType {
 
-    def genByteCode(sym: Symbol.DefnSym)(implicit flix: Flix): Array[Byte] = {
+    def genByteCode(defn: ReducedAst.Def)(implicit root: Root, flix: Flix): Array[Byte] = {
       val cm = ClassMaker.mkClass(this.jvmName, IsFinal)
 
-      cm.mkStaticMethod(MainMethod, IsPublic, NotFinal, mainIns(sym)(_))
+      cm.mkStaticMethod(MainMethod, IsPublic, NotFinal, mainIns(defn)(_, root))
 
       cm.closeClassMaker()
     }
 
     def MainMethod: StaticMethod = StaticMethod(this.jvmName, "main", mkDescriptor(BackendType.Array(BackendType.String))(VoidableType.Void))
 
-    private def mainIns(sym: Symbol.DefnSym)(implicit mv: MethodVisitor): Unit = {
-      val defName = BackendObjType.Defn(sym).jvmName
+    private def mainIns(defn: ReducedAst.Def)(implicit mv: MethodVisitor, root: Root): Unit = {
+      // Entry points are always control pure functions.
+      val defnType = JvmOps.getDefnType(defn).asInstanceOf[ClassMaker.Def]
       withName(0, BackendType.Array(BackendType.String))(args => {
         args.load()
         INVOKESTATIC(Global.SetArgsMethod)
-        NEW(defName)
+        NEW(defnType.jvmName)
         DUP()
-        INVOKESPECIAL(defName, JvmName.ConstructorMethod, MethodDescriptor.NothingToVoid)
+        INVOKESPECIAL(defnType.Constructor)
         DUP()
         GETSTATIC(Unit.SingletonField)
-        PUTFIELD(InstanceField(defName, "arg0", BackendType.Object))
+        PUTFIELD(defnType.inheritedArrow.ArgField(0))
         Result.unwindSuspensionFreeThunk(s"in ${this.jvmName.toBinaryName}", SourceLocation.Unknown)
         POP()
         RETURN()
@@ -1543,13 +1542,13 @@ object BackendObjType {
 
   case class Namespace(ns: List[String]) extends BackendObjType {
 
-    def genByteCode(defs: List[ReducedAst.Def])(implicit flix: Flix): Array[Byte] = {
+    def genByteCode(defs: List[ReducedAst.Def])(implicit root: Root, flix: Flix): Array[Byte] = {
       val cm = ClassMaker.mkClass(this.jvmName, IsFinal)
 
       cm.mkConstructor(Constructor, IsPublic, nullarySuperConstructor(ClassMaker.Object.Constructor)(_))
 
       for (defn <- defs) {
-        cm.mkStaticMethod(ShimMethod(defn), IsPublic, IsFinal, shimIns(defn)(_))
+        cm.mkStaticMethod(ShimMethod(defn), IsPublic, IsFinal, shimIns(defn)(_, root))
       }
 
       cm.closeClassMaker()
@@ -1565,19 +1564,20 @@ object BackendObjType {
       StaticMethod(this.jvmName, name, MethodDescriptor(erasedArgs, erasedResult))
     }
 
-    private def shimIns(defn: ReducedAst.Def)(implicit mv: MethodVisitor): Unit = {
-      val defnT = Defn(defn.sym)
-      val paramTypes = defn.fparams.map(fp => BackendType.toErasedBackendType(fp.tpe))
-      withNames(0, paramTypes) {
+    private def shimIns(defn: ReducedAst.Def)(implicit mv: MethodVisitor, root: Root): Unit = {
+      // Entrypoints are always control pure functions
+      val defnType = JvmOps.getDefnType(defn).asInstanceOf[ClassMaker.Def]
+
+      withNames(0, defnType.inheritedArrow.args) {
         case (_, args) =>
           val erasedResult = BackendType.toErasedBackendType(defn.unboxedType.tpe)
-          NEW(defnT.jvmName)
+          NEW(defnType.jvmName)
           DUP()
-          INVOKESPECIAL(ConstructorMethod(defnT.jvmName, Nil))
+          INVOKESPECIAL(defnType.Constructor)
           for ((arg, index) <- args.zipWithIndex) {
             DUP()
             arg.load()
-            PUTFIELD(InstanceField(defnT.jvmName, s"arg$index", arg.tpe))
+            defnType.inheritedArrow.ArgField(index)
           }
           Result.unwindSuspensionFreeThunkToType(erasedResult, s"in shim method of ${defn.sym}", defn.loc)
           xReturn(erasedResult)

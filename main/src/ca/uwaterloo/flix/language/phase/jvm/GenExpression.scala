@@ -1074,66 +1074,52 @@ object GenExpression {
 
     case Expr.ApplyDef(sym, exps, ct, _, _, loc) => ct match {
       case ExpPosition.Tail =>
-        val defJvmName = BackendObjType.Defn(sym).jvmName
-        // Type of the function abstract class
-        val functionInterface = JvmOps.getErasedFunctionInterfaceType(root.defs(sym).arrowType)
+        val defnType = JvmOps.getDefnType(root.defs(sym))
 
         // Put the def on the stack
-        mv.visitTypeInsn(NEW, defJvmName.toInternalName)
+        BytecodeInstructions.NEW(defnType.jvmName)
         mv.visitInsn(DUP)
-        mv.visitMethodInsn(INVOKESPECIAL, defJvmName.toInternalName, JvmName.ConstructorMethod, MethodDescriptor.NothingToVoid.toDescriptor, false)
+        BytecodeInstructions.INVOKESPECIAL(defnType.Constructor)
         // Putting args on the Fn class
         for ((arg, i) <- exps.zipWithIndex) {
           // Duplicate the FunctionInterface
           mv.visitInsn(DUP)
           // Evaluating the expression
           compileExpr(arg)
-          BytecodeInstructions.PUTFIELD(functionInterface.ArgField(i))
+          BytecodeInstructions.PUTFIELD(defnType.inheritedArrow.ArgField(i))
         }
         // Return the def
         mv.visitInsn(ARETURN)
 
       case ExpPosition.NonTail =>
-        val defn = root.defs(sym)
-        val targetIsFunction = defn.cparams.isEmpty
-        val canCallStaticMethod = Purity.isControlPure(defn.expr.purity) && targetIsFunction
-        if (canCallStaticMethod) {
-          val paramTpes = defn.fparams.map(fp => BackendType.toBackendType(fp.tpe))
-          // Call the static method, using exact types
-          for ((arg, tpe) <- exps.zip(paramTpes)) {
-            compileExpr(arg)
-            BytecodeInstructions.castIfNotPrim(tpe)
-          }
-          val resultTpe = BackendObjType.Result.toTpe
-          val desc = MethodDescriptor(paramTpes, resultTpe)
-          val className = BackendObjType.Defn(sym).jvmName
-          mv.visitMethodInsn(INVOKESTATIC, className.toInternalName, JvmName.DirectApply, desc.toDescriptor, false)
-          BackendObjType.Result.unwindSuspensionFreeThunk("in pure function call", loc)
-        } else {
-          // JvmType of Def
-          val defJvmName = BackendObjType.Defn(sym).jvmName
-
-          // Put the def on the stack
-          mv.visitTypeInsn(NEW, defJvmName.toInternalName)
-          mv.visitInsn(DUP)
-          mv.visitMethodInsn(INVOKESPECIAL, defJvmName.toInternalName, JvmName.ConstructorMethod, MethodDescriptor.NothingToVoid.toDescriptor, false)
-
-          // Putting args on the Fn class
-          for ((arg, i) <- exps.zipWithIndex) {
-            // Duplicate the FunctionInterface
+        JvmOps.getDefnType(root.defs(sym)) match {
+          case defn: ClassMaker.Def =>
+            // Call the static method, using exact types
+            for ((exp, arg) <- exps.zip(defn.args)) {
+              compileExpr(exp)
+              BytecodeInstructions.castIfNotPrim(arg.tpe)
+            }
+            BytecodeInstructions.INVOKESTATIC(defn.DirectApply)
+            BackendObjType.Result.unwindSuspensionFreeThunk("in pure function call", loc)
+          case defn: ClassMaker.EffectDef =>
+            // Put the def on the stack
+            BytecodeInstructions.NEW(defn.jvmName)
             mv.visitInsn(DUP)
-            // Evaluating the expression
-            compileExpr(arg)
-            mv.visitFieldInsn(PUTFIELD, defJvmName.toInternalName,
-              s"arg$i", BackendType.toErasedBackendType(arg.tpe).toDescriptor)
-          }
-          // Calling unwind and unboxing
-          ctx match {
-            case EffectContext(_, _, newFrame, setPc, _, pcLabels, pcCounter) =>
-              val defn = root.defs(sym)
-              if (Purity.isControlPure(defn.expr.purity)) {
+            BytecodeInstructions.INVOKESPECIAL(defn.Constructor)
+
+            // Putting args on the Fn class
+            for ((arg, i) <- exps.zipWithIndex) {
+              mv.visitInsn(DUP)
+              compileExpr(arg)
+              BytecodeInstructions.PUTFIELD(defn.inheritedArrow.ArgField(i))
+            }
+            // Calling unwind and unboxing
+            ctx match {
+              case DirectInstanceContext(_, _, _) | DirectStaticContext(_, _, _) =>
                 BackendObjType.Result.unwindSuspensionFreeThunk("in pure function call", loc)
-              } else {
+              case _ if Purity.isControlPure(root.defs(sym).expr.purity) =>
+                BackendObjType.Result.unwindSuspensionFreeThunk("in pure function call", loc)
+              case EffectContext(_, _, newFrame, setPc, _, pcLabels, pcCounter) =>
                 val pcPoint = pcCounter(0) + 1
                 val pcPointLabel = pcLabels(pcPoint)
                 val afterUnboxing = new Label()
@@ -1145,10 +1131,9 @@ object GenExpression {
                 mv.visitVarInsn(ALOAD, 1)
 
                 mv.visitLabel(afterUnboxing)
-              }
-            case DirectInstanceContext(_, _, _) | DirectStaticContext(_, _, _) =>
-              BackendObjType.Result.unwindSuspensionFreeThunk("in pure function call", loc)
-          }
+            }
+          case _: ClassMaker.Closure =>
+            throw InternalCompilerException("Unexpected Closure in ApplyDef", loc)
         }
     }
 

@@ -18,7 +18,7 @@
 package ca.uwaterloo.flix.language.phase.jvm
 
 import ca.uwaterloo.flix.language.ast.ReducedAst.*
-import ca.uwaterloo.flix.language.ast.{MonoType, ReducedAst, SourceLocation, Symbol, Type, TypeConstructor}
+import ca.uwaterloo.flix.language.ast.{MonoType, Purity, ReducedAst, SourceLocation, Symbol, Type, TypeConstructor}
 import ca.uwaterloo.flix.language.phase.jvm.JvmName.mangle
 import ca.uwaterloo.flix.util.InternalCompilerException
 
@@ -41,6 +41,39 @@ object JvmOps {
       throw InternalCompilerException(s"Unexpected type: '$tpe'.", SourceLocation.Unknown)
   }
 
+  def getDefnType(defn: ReducedAst.Def)(implicit root: Root): ClassMaker.DefClass = {
+    val fparams = defn.fparams.map(fp => ClassMaker.Var(fp.sym, BackendType.toBackendType(fp.tpe)))
+    val resType = BackendType.toBackendType(defn.tpe)
+
+    val isFunction = defn.cparams.isEmpty
+    val isControlPure = Purity.isControlPure(defn.expr.purity)
+
+    if (isFunction && isControlPure) {
+      ClassMaker.Def(
+        defn.sym,
+        fparams,
+        resType
+      )
+    } else if (isFunction) {
+      ClassMaker.EffectDef(
+        defn.sym,
+        fparams,
+        resType,
+        defn.pcPoints,
+        defn.lparams.map(lp => ClassMaker.Var(lp.sym, BackendType.toBackendType(lp.tpe)))
+      )
+    } else {
+      ClassMaker.Closure(
+        defn.sym,
+        fparams,
+        resType,
+        defn.pcPoints,
+        defn.lparams.map(lp => ClassMaker.Var(lp.sym, BackendType.toBackendType(lp.tpe))),
+        defn.cparams.map(cp => ClassMaker.Var(cp.sym, BackendType.toBackendType(cp.tpe)))
+      )
+    }
+  }
+
   /**
     * Returns the erased closure abstract class type `CloX$Y$Z` for the given [[MonoType]].
     *
@@ -53,7 +86,7 @@ object JvmOps {
     */
   def getErasedClosureAbstractClassType(tpe: MonoType): BackendObjType.AbstractArrow = tpe match {
     case MonoType.Arrow(targs, tresult) =>
-     BackendObjType.AbstractArrow(targs.map(BackendType.toErasedBackendType), BackendType.toErasedBackendType(tresult))
+      BackendObjType.AbstractArrow(targs.map(BackendType.toErasedBackendType), BackendType.toErasedBackendType(tresult))
     case _ => throw InternalCompilerException(s"Unexpected type: '$tpe'.", SourceLocation.Unknown)
   }
 
@@ -202,7 +235,7 @@ object JvmOps {
     *   - `instantiateType([x -> Int32], y) = throw InternalCompilerException`
     *   - `instantiateType(_, Option[Int32]) =  throw InternalCompilerException`
     *
-    * @param m Decides types for variables, must only contain erased types.
+    * @param m   Decides types for variables, must only contain erased types.
     * @param tpe the type to instantiate, must be a polymorphic erased type
     *            (either [[Type.Var]], a primitive type, or `java.lang.Object`)
     */

@@ -43,7 +43,7 @@ object JvmBackend {
     val allTypes = root.types ++ requiredTypes
 
     val mainClass = root.getMain.map(
-      main => JvmClass(BackendObjType.Main.jvmName, BackendObjType.Main.genByteCode(main.sym))
+      main => JvmClass(BackendObjType.Main.jvmName, BackendObjType.Main.genByteCode(main))
     ).toList
 
     val namespaceClasses = JvmOps.namespacesOf(root).map(

@@ -17,6 +17,7 @@
 package ca.uwaterloo.flix.language.phase.jvm
 
 import ca.uwaterloo.flix.api.Flix
+import ca.uwaterloo.flix.language.ast.Symbol
 import ca.uwaterloo.flix.language.phase.jvm.ClassMaker.*
 import ca.uwaterloo.flix.language.phase.jvm.ClassMaker.Abstract.{IsAbstract, NotAbstract}
 import ca.uwaterloo.flix.language.phase.jvm.ClassMaker.Final.*
@@ -281,7 +282,56 @@ object ClassMaker {
 
   sealed case class StaticInterfaceMethod(clazz: JvmName, name: String, d: MethodDescriptor) extends Method
 
-  // Constants.
+  // Flix Constants.
+
+  sealed trait DefClass {
+    def sym: Symbol.DefnSym
+    def args: List[Var]
+    val argTypes: List[BackendType] = args.map(_.tpe)
+    def tpe: BackendType
+    def jvmName: JvmName
+    val inheritedArrow: BackendObjType.Arrow = BackendObjType.Arrow(argTypes.map(_.toErased), tpe)
+    val Constructor: ConstructorMethod = ConstructorMethod(this.jvmName, Nil)
+  }
+
+  case class Def(sym: Symbol.DefnSym, args: List[Var], tpe: BackendType) extends DefClass {
+
+    def jvmName: JvmName = JvmName(sym.namespace, JvmName.mkClassName("Def", sym.name))
+
+    def DirectApply: StaticMethod = StaticMethod(this.jvmName, JvmName.DirectApply, MethodDescriptor(argTypes, BackendObjType.Result.toTpe))
+
+  }
+
+  case class EffectDef(sym: Symbol.DefnSym, args: List[Var], tpe: BackendType, pcPoints: Int, locals: List[Var]) extends DefClass {
+
+    def jvmName: JvmName = JvmName(sym.namespace, JvmName.mkClassName("EffDef", sym.name))
+
+    def LocalField(i: Int): InstanceField = InstanceField(this.jvmName, s"l$i", locals(i).tpe)
+
+    def PcField: InstanceField = InstanceField(this.jvmName, "pc", BackendType.Int32)
+
+    def CopyMethod: InstanceMethod = InstanceMethod(this.jvmName, "copy", mkDescriptor()(this.jvmName.toTpe))
+  }
+
+  case class Closure(sym: Symbol.DefnSym, args: List[Var], tpe: BackendType, pcPoints: Int, locals: List[Var], closureArgs: List[Var]) extends DefClass {
+
+    def jvmName: JvmName = JvmName(sym.namespace, JvmName.mkClassName("Clo", sym.name))
+
+    def superClass: BackendObjType.AbstractArrow = BackendObjType.AbstractArrow(inheritedArrow.args, inheritedArrow.result)
+
+    def LocalField(i: Int): InstanceField = InstanceField(this.jvmName, s"l$i", locals(i).tpe)
+
+    def CloArgField(i: Int): InstanceField = InstanceField(this.jvmName, s"clo$i", closureArgs(i).tpe)
+
+    def PcField: InstanceField = InstanceField(this.jvmName, "pc", BackendType.Int32)
+
+    def CopyMethod: InstanceMethod = InstanceMethod(this.jvmName, "copy", mkDescriptor()(this.jvmName.toTpe))
+
+  }
+
+  case class Var(sym: Symbol.VarSym, tpe: BackendType)
+
+  // Java Constants.
 
   object Arrays {
 
