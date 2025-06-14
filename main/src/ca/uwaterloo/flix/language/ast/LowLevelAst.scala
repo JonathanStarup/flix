@@ -24,13 +24,21 @@ object LowLevelAst {
 
   sealed trait Def
 
-  case class DirectDef(sym: Symbol.DefnSym, fparams: List[FormalParam], expr: Expr, tpe: BackendType, loc: SourceLocation) extends Def
+  case class DirectDef(sym: Symbol.DefnSym, fparams: List[FormalParam], exp: Exp, tpe: BackendType, loc: SourceLocation) extends Def
 
   case class EffectDef(sym: Symbol.EffectSym, fparams: List[FormalParam])
 
   case class FormalParam(offset: Int, tpe: BackendType, loc: SourceLocation)
 
-  sealed trait Expr
+  sealed trait Exp
+
+  object Exp {
+
+    case object Unit extends Exp
+
+    case object Null extends Exp
+
+  }
 
 }
 
