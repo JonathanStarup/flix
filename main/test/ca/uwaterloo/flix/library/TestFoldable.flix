@@ -665,7 +665,7 @@ mod TestFoldable {
             Foldable.filter(f, xs)
         } with handler Capture {
             def capture(x, resume) = {
-                MutList.push(x, effects);
+                MutList.push!(x, effects);
                 resume(x)
             }
         };

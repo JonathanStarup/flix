@@ -22,7 +22,7 @@ eff Clock {
     ///
     /// Returns a measure of time since the epoch in the given time unit `u`.
     ///
-    pub def currentTime(u: TimeUnit): Int64
+    def currentTime(u: TimeUnit): Int64
 
 }
 
@@ -44,9 +44,9 @@ mod Clock {
     /// In other words, re-interprets the `Clock` effect using the `IO` effect.
     ///
     pub def handle(f: a -> b \ ef): a -> b \ (ef - Clock) + IO = x ->
-        try {
+        run {
             f(x)
-        } with Clock {
+        } with handler Clock {
             def currentTime(u, k) = {
                 let time = System.currentTimeMillis();
                 let ns = JTimeUnit.MILLISECONDS;
@@ -67,6 +67,6 @@ mod Clock {
     ///
     /// In other words, re-interprets the `Clock` effect using the `IO` effect.
     ///
-    pub def run(f: Unit -> a \ ef): a \ (ef - Clock) + IO = handle(f)()
+    pub def runWithIO(f: Unit -> a \ ef): a \ (ef - Clock) + IO = handle(f)()
 
 }

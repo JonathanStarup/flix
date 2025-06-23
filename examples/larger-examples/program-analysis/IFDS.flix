@@ -22,7 +22,7 @@ mod IFDS {
     ///
     /// Solves the given IFDS instances.
     ///
-    pub def runSolver(ifds: IFDS[p, n, d]): Vector[(n, d)]
+    pub def run(ifds: IFDS[p, n, d]): Vector[(n, d)]
         with Order[n], Order[d], Order[p] =
 
         // Extract main.
@@ -83,7 +83,7 @@ mod IFDS {
         };
 
 
-        let f1 = inject ifds#cfg, ifds#callGraph, ifds#startNodes, ifds#endNodes into CFG/2, CallGraph/2, StartNode/2, EndNode/2;
+        let f1 = inject ifds#cfg, ifds#callGraph, ifds#startNodes, ifds#endNodes into CFG, CallGraph, StartNode, EndNode;
 
         query p, f1 select (n, d) from Results(n, d)
 
@@ -189,7 +189,7 @@ def main(): Unit \ IO =
         case _ => Vector#{}
     };
 
-    let result = IFDS.runSolver({
+    let result = IFDS.run({
         zero            = "zero",
         main            = "main",
         cfg             = cfg,

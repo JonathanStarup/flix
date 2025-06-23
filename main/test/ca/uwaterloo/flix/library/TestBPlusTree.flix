@@ -257,7 +257,7 @@ mod TestBPlusTree {
     def forEach01(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.forEach(f, tree);
         let res = Vector#{0, 1, 2, 3, 4, 5};
         MutList.toVector(list) `Vector.equals` res
@@ -267,7 +267,7 @@ mod TestBPlusTree {
     def forEach02(): Bool = region rc {
         let tree = rangeQueryMultipleValues(rc);
         let list = MutList.empty(rc);
-        let f = k -> v -> MutList.push((k, v), list);
+        let f = k -> v -> MutList.push!((k, v), list);
         BPlusTree.forEach(f, tree);
         let res = Vector#{(0, 12), (1, 12), (2, 13), (3, 14)};
         MutList.toVector(list) `Vector.equals` res
@@ -578,12 +578,12 @@ mod TestBPlusTree {
         let _: Unit = region rc2 {
             (spawn unchecked_cast((
                 List.range(0, totalInsertNumInt32()) |>
-                    List.forEach(i -> 
+                    List.forEach(i ->
                         BPlusTree.putWith(preferSome, i, None, tree)
                     ): _ \ rc) as _ \ IO) @ rc2);
             (spawn unchecked_cast((
                 List.range(0, totalInsertNumInt32()) |>
-                    List.forEach(i -> 
+                    List.forEach(i ->
                         BPlusTree.putWith(preferSome, i, Some(1), tree)
             ): _ \ rc) as _ \ IO) @ rc2)
         };
@@ -670,7 +670,7 @@ mod TestBPlusTree {
     def rangeQueryWith01(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, 0, 5, tree);
         let res = Vector#{0, 1, 2, 3, 4, 5};
         MutList.toVector(list) `Vector.equals` res
@@ -680,7 +680,7 @@ mod TestBPlusTree {
     def rangeQueryWith02(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, -2, 5, tree);
         let res = Vector#{0, 1, 2, 3, 4, 5};
         MutList.toVector(list) `Vector.equals` res
@@ -690,7 +690,7 @@ mod TestBPlusTree {
     def rangeQueryWith03(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, -2, 7, tree);
         let res = Vector#{0, 1, 2, 3, 4, 5};
         MutList.toVector(list) `Vector.equals` res
@@ -700,7 +700,7 @@ mod TestBPlusTree {
     def rangeQueryWith04(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, 1, 1, tree);
         let res = Vector#{1};
         MutList.toVector(list) `Vector.equals` res
@@ -710,7 +710,7 @@ mod TestBPlusTree {
     def rangeQueryWith05(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, 1, 3, tree);
         let res = Vector#{1, 2, 3};
         MutList.toVector(list) `Vector.equals` res
@@ -720,7 +720,7 @@ mod TestBPlusTree {
     def rangeQueryWith06(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, -2, -2, tree);
         let res = Vector#{ };
         MutList.toVector(list) `Vector.equals` res
@@ -730,7 +730,7 @@ mod TestBPlusTree {
     def rangeQueryWith07(): Bool = region rc {
         let tree = rangeQueryDefaultTree(rc);
         let list = MutList.empty(rc);
-        let f = k -> _ -> MutList.push(k, list);
+        let f = k -> _ -> MutList.push!(k, list);
         BPlusTree.rangeQueryWith(f, 7, 7, tree);
         let res = Vector#{ };
         MutList.toVector(list) `Vector.equals` res
@@ -740,7 +740,7 @@ mod TestBPlusTree {
     def rangeQueryWith08(): Bool = region rc {
         let tree = rangeQueryMultipleValues(rc);
         let list = MutList.empty(rc);
-        let f = k -> v -> MutList.push((k, v), list);
+        let f = k -> v -> MutList.push!((k, v), list);
         BPlusTree.rangeQueryWith(f, 0, 3, tree);
         let res = Vector#{(0, 12), (1, 12), (2, 13), (3, 14)};
         MutList.toVector(list) `Vector.equals` res

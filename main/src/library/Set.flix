@@ -21,7 +21,7 @@ import java.util.{Set => JSet}
 ///
 /// A set is currently represented internally as a red-black tree.
 ///
-pub enum Set[t] with Sendable {
+pub enum Set[t] {
     case Set(RedBlackTree[t, Unit])
 }
 
@@ -587,7 +587,7 @@ mod Set {
     pub def unfold(f: s -> Option[(a, s)] \ ef, st: s): Set[a] \ ef with Order[a] =
         def loop(sst, s) = match f(sst) {
             case None         => s
-            case Some(a, st1) => loop(st1, insert(a, s))
+            case Some((a, st1)) => loop(st1, insert(a, s))
         };
         loop(st, empty())
 

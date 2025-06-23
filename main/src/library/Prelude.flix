@@ -18,6 +18,25 @@ pub enum Proxy[_] {
 }
 
 ///
+/// The uninterpretable Chan effect.
+///
+/// The `Chan` effect represents the global region of channels.
+///
+/// The `Chan` effect is uninterpretable which means that it cannot be handled.
+///
+pub eff Chan
+
+///
+/// The uninterpretable `Env` effect.
+///
+/// The `Env` effect represents actions that read from the environment (e.g. information
+/// about the shell, operating system, or hardware)
+///
+/// The `Env` effect is uninterpretable which means that it cannot be handled.
+///
+pub eff Env
+
+///
 /// The uninterpretable `Exec` effect.
 ///
 /// The `Exec` effect represents the actions required to start (i.e. run) a new process outside the JVM.
@@ -29,27 +48,27 @@ pub enum Proxy[_] {
 pub eff Exec
 
 ///
-/// The uninterpretable `FileRead` effect.
+/// The uninterpretable `FsRead` effect.
 ///
-/// The `FileRead` effect represents the actions to required to read from the file system.
+/// The `FsRead` effect represents the actions to required to read from the file system.
 ///
-/// The `FileRead` effect is uninterpretable which means that it cannot be handled.
+/// The `FsRead` effect is uninterpretable which means that it cannot be handled.
 ///
-pub eff FileRead
+pub eff FsRead
 
 ///
-/// The uninterpretable `FileWrite` effect.
+/// The uninterpretable `FsWrite` effect.
 ///
-/// The `FileWrite` effect represents the actions to required to write to the file system.
+/// The `FsWrite` effect represents the actions to required to write to the file system.
 ///
-/// The `FileWrite` effect is uninterpretable which means that it cannot be handled.
+/// The `FsWrite` effect is uninterpretable which means that it cannot be handled.
 ///
-pub eff FileWrite
+pub eff FsWrite
 
 ///
 /// A type alias for the `FileRead` and `FileWrite` effects.
 ///
-type alias FileIO = {FileRead, FileWrite}
+type alias FileIO = {FsRead, FsWrite}
 
 ///
 /// The uninterpretable IO effect.
@@ -187,31 +206,22 @@ pub def touch(_: Region[r]): Unit \ r = checked_ecast(())
 ///
 /// Crashes the current process with the given message `m`.
 ///
-pub def bug!(m: String): a = masked_cast({
+pub def bug!(m: String): a = unchecked_cast({ printBugMsg(m); ?panic } as _ \ {})
+
+@Internal
+pub def printBugMsg(m: String): Unit \ IO = {
     System.err.println("*".repeat(80));
     System.err.println("**") ;
     System.err.println("**  BUG: ${m}") ;
     System.err.println("**") ;
     System.err.println("*".repeat(80));
-    System.err.println("");
-    ?panic
-})
+    System.err.println("")
+}
 
 ///
 /// Asserts that this expression is unreachable. Crashes if not.
 ///
 pub def unreachable!(): a = bug!("Reached unreachable expression.")
-
-///
-/// Prints the argument unless it is ().
-///
-@Internal
-pub def printUnlessUnit(x: a): Unit \ IO with ToString[a] = {
-    typematch x {
-        case _: Unit => ()
-        case _: _    => println(x)
-    }
-}
 
 pub enum Purity[a: Type, b: Type, ef: Eff] {
     case Pure(a -> b)

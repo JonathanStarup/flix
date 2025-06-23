@@ -22,7 +22,7 @@ eff Exit {
     ///
     /// Immediately exits the JVM with the specified `exitCode`.
     ///
-    pub def exit(exitCode: Int32): Void
+    def exit(exitCode: Int32): Void
 
 }
 
@@ -37,10 +37,10 @@ mod Exit {
     ///
     /// Note: The returned function can still return normally if `exit` is never called by `f`.
     ///
-    pub def handle(f: a -> b \ ef): a -> b \ (ef - Exit) + Sys = x ->
-        try {
+    pub def handle(f: a -> b \ ef): a -> b \ (ef - Exit) + {Sys, IO} = x ->
+        run {
             f(x)
-        } with Exit {
+        } with handler Exit {
             def exit(ec, _k) = unchecked_cast(System.exit(ec) as b)
         }
 
@@ -51,6 +51,6 @@ mod Exit {
     ///
     /// Note: This function can still return normally if `exit` is never called by `f`.
     ///
-    pub def run(f: Unit -> a \ ef): a \ (ef - Exit) + Sys  = handle(f)()
+    pub def runWithIO(f: Unit -> a \ ef): a \ (ef - Exit) + {Sys, IO}  = handle(f)()
 
 }

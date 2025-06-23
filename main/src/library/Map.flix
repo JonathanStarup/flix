@@ -21,7 +21,7 @@ import java.util.{Map => JMap}
 ///
 /// A map is currently represented internally as a red-black tree.
 ///
-pub enum Map[k, v] with Sendable {
+pub enum Map[k, v] {
     case Map(RedBlackTree[k, v])
 }
 
@@ -866,7 +866,7 @@ mod Map {
     pub def unfold(f: s -> Option[(k, v, s)] \ ef, st: s): Map[k, v] \ ef with Order[k] =
         def loop(sst, m) = match f(sst) {
             case None            => m
-            case Some(k, v, st1) => loop(st1, insert(k, v, m))
+            case Some((k, v, st1)) => loop(st1, insert(k, v, m))
         };
         loop(st, empty())
 
@@ -881,7 +881,7 @@ mod Map {
     pub def unfoldWithIter(next: Unit -> Option[(k, v)] \ ef): Map[k, v] \ ef with Order[k] =
         def loop(m) = match next() {
             case None       => m
-            case Some(k, v) => loop(insert(k, v, m))
+            case Some((k, v)) => loop(insert(k, v, m))
         };
         loop(empty())
 

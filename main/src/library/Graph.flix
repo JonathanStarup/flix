@@ -27,7 +27,7 @@ mod Graph {
     /// edges in the directed graph `g`, including zero.
     ///
     pub def closure(g: m[(t, t)]): Set[(t, t)] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let res = query edges, nodes(), reachability()
                   select (src, dst)
                   from Reachable(src, dst);
@@ -39,7 +39,7 @@ mod Graph {
     /// graph `g`.
     ///
     pub def reachableFrom(src: t, g: m[(t, t)]): Set[t] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let res = query edges, reachabilityFromSrc(src)
                   select dst
                   from Reachable(dst);
@@ -51,7 +51,7 @@ mod Graph {
     /// graph `g`.
     ///
     pub def unreachableFrom(src: t, g: m[(t, t)]): Set[t] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let unreachablility = #{
             // If there is a node that is not reachable from `src` then it is
             // unreachable.
@@ -76,7 +76,7 @@ mod Graph {
     /// reach each other.
     ///
     pub def stronglyConnectedComponents(g: m[(t, t)]): Set[Set[t]] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let connected = #{
             // If `n1` can reach `n2` and `n2` can reach `n1` then they are part
             // of the same strongly connected component.
@@ -86,7 +86,7 @@ mod Graph {
             // After the full computation of `Connected`, duplicates are removed
             // by checking that `n` is the minimum in the strongly connected
             // component.
-            Components(s) :- fix Connected(n; s), if Some(n) == Set.minimum(s).
+            Components(s) :- fix Connected(n; s), if (Some(n) == Set.minimum(s)).
         };
         let res = query edges, nodes(), reachability(), connected, components
                   select x
@@ -99,7 +99,7 @@ mod Graph {
     /// nodes flipped.
     ///
     pub def flipEdges(g: m[(t, t)]): Set[(t, t)] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let rev = #{
             RevEdge(y, x) :- Edge(x, y).
         };
@@ -116,9 +116,9 @@ mod Graph {
     /// OBS: No self-edges are returned no matter the input.
     ///
     pub def invert(g: m[(t, t)]): Set[(t, t)] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let inverse = #{
-            InvEdge(x, y) :- Node(x), Node(y), not Edge(x, y), if x != y.
+            InvEdge(x, y) :- Node(x), Node(y), not Edge(x, y), if (x != y).
         };
         let res = query nodes(), edges, inverse
                   select (x, y)
@@ -130,7 +130,7 @@ mod Graph {
     /// Returns `true` if the directed graph `g` contains at least one cycle.
     ///
     pub def isCyclic(g: m[(t, t)]): Bool \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let reachability = #{
             // Reachability given the edges.
             Reachable(n1, n2) :- Edge(n1, n2).
@@ -154,7 +154,7 @@ mod Graph {
         // Algorithm based on floyd-warshall.
         /// Returns the number of items in `s` less than `v`.
         def rank(v, s) = s |> Set.partition(v0 -> v0 < v) |> fst |> Set.size;
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/3;
         let negCycle = #{
             Node(x) :- Edge(x, _, _).
             Node(x) :- Edge(_, _, x).
@@ -172,14 +172,14 @@ mod Graph {
             Dist(x, y, 0; Down.Down(w)) :- Edge(x, w, y).
             // If there exists a path of length `w` without using node `k+1`
             // then that path is also valid using node `k+1`.
-            Dist(x, y, k+1; w) :- Dist(x, y, k; w), NodeCount(c), if k < c.
+            Dist(x, y, k+1; w) :- Dist(x, y, k; w), NodeCount(c), if (k < c).
             // Combine paths if they use intermediate nodes of the correct
             // rank (also making sure `k` doesn't increase forever).
             Dist(x, y, k+1; w1 + w2) :- Dist(x, kth, k; w1), Dist(kth, y, k; w2),
-                NodeRank(kth, k), NodeCount(c), if k < c.
+                NodeRank(kth, k), NodeCount(c), if (k < c).
             // If `x` can go to `x` with a negative distances, then it can be
             // repeated.
-            NegCycle() :- fix Dist(x, x, _; w), if destructDown(w) < 0.
+            NegCycle() :- fix Dist(x, x, _; w), if (destructDown(w) < 0).
         };
         let mapping = #{
             Mapping((x, y), destructDown(d)) :- fix Dist(x, y, c; d), NodeCount(c).
@@ -207,7 +207,7 @@ mod Graph {
     /// OBS: No negative cycles must be present.
     ///
     pub def boundedDistances(g: m[(t, Int32, t)]): Map[(t, t), Int32] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/3;
         let dists = #{
             // Initialize all node distances to zero.
             Dist(x, x; Down.Down(0)) :- Edge(x, _, _).
@@ -231,7 +231,7 @@ mod Graph {
     /// weighted directed graph `g`.
     ///
     pub def distancesFrom(src: t, g: m[(t, Int32, t)]): Map[t, Int32] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/3;
         let dists = #{
             Dist(src; Down.Down(0)).
             Dist(y; d + Down.Down(w)) :- Dist(x; d), Edge(x, w, y).
@@ -272,11 +272,11 @@ mod Graph {
     /// OBS: No negative cycles must be present.
     ///
     pub def withinDistanceOf(src: t, limit: Int32, g: m[(t, Int32, t)]): Set[t] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/3;
         let nodes = #{
-            Dist(src; Down.Down(0)) :- if limit >= 0.
+            Dist(src; Down.Down(0)) :- if (limit >= 0).
             Dist(y; d + Down.Down(w)) :- Dist(x; d), Edge(x, w, y),
-                                    if destructDown(d) + w <= limit.
+                                    if (destructDown(d) + w <= limit).
             Node(x) :- fix Dist(x; _).
         };
         let res = query edges, nodes
@@ -290,11 +290,11 @@ mod Graph {
     /// from `src` in the directed graph `g`.
     ///
     pub def withinEdgesOf(src: t, limit: Int32, g: m[(t, t)]): Set[t] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let nodes = #{
-            Dist(src; Down.Down(0)) :- if limit >= 0.
+            Dist(src; Down.Down(0)) :- if (limit >= 0).
             Dist(y; d + Down.Down(1)) :- Dist(x; d), Edge(x, y),
-                                    if destructDown(d) + 1 <= limit.
+                                    if (destructDown(d) + 1 <= limit).
             Node(x) :- fix Dist(x; _).
         };
         let res = query edges, nodes
@@ -312,7 +312,7 @@ mod Graph {
     ///
     pub def topologicalSort(g: m[(t, t)]): List[t] \ Foldable.Aef[m] with Foldable[m], Order[t] = region rc {
         // https://github.com/souffle-lang/benchmarks/tree/master/benchmarks/topological_ordering
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let topSort = #{
             EdgeSecond(x) :- Edge(_, x).
             EdgeFirst(x) :- Edge(x, _).
@@ -343,7 +343,7 @@ mod Graph {
     ///
     pub def degrees(g: m[(t, t)]): Map[t, Int32] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
         use Option.{getWithDefault, map};
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let in = #{
             // Careful use of option type here to make sure the empty set is not
             // the bottom lattice element. That would exclude degrees of zero.
@@ -364,7 +364,7 @@ mod Graph {
     /// shortest path from `src` in the directed graph `g` is of a given length.
     ///
     pub def frontiersFrom(src: t, g: m[(t, t)]): Map[Int32, Set[t]] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let frontiers = #{
             Dist(src; Down.Down(0)).
             Dist(y; n + Down.Down(1)) :- Dist(x; n), Edge(x, y).
@@ -374,8 +374,8 @@ mod Graph {
             MaxFrontier(Set.maximum(s) |> Option.getWithDefault(0)) :- fix Frontiers(;s).
 
             // Initialize all frontiers (with non-bot element).
-            Frontier(0; Some(Set#{})) :- MaxFrontier(m), if m > 0.
-            Frontier(n+1; Some(Set#{})) :- Frontier(n; _), MaxFrontier(m), if n < m.
+            Frontier(0; Some(Set#{})) :- MaxFrontier(m), if (m > 0).
+            Frontier(n+1; Some(Set#{})) :- Frontier(n; _), MaxFrontier(m), if (n < m).
 
             // Collect the frontiers.
             Frontier(destructDown(n); Some(Set#{x})) :- fix Dist(x; n).
@@ -401,21 +401,21 @@ mod Graph {
     /// be the maximum `cut` of the possible choices).
     ///
     pub def cutPoints(g: m[(t, t)]): Set[(t, t, t)] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         def unpack(opt) = match opt {
             case Some(v) => v
             case None => unreachable!()
         };
         let cuts = #{
             CutPoint(x, Set.maximum(cut) |> unpack, y) :-
-                fix CutPointSet(x, y; cut), if not Set.isEmpty(cut).
+                fix CutPointSet(x, y; cut), if (not Set.isEmpty(cut)).
             CutPointSet(x, y; Set#{cut}) :- Reachable(x, y), Node(cut),
                                             not Circumvent(x, cut, y),
-                                            if x != cut, if y != cut, if x != y.
+                                            if (x != cut), if (y != cut), if (x != y).
             Circumvent(x, cut, y) :- Node(cut), Edge(x, y),
-                                     if x != cut, if y != cut.
+                                     if (x != cut), if (y != cut).
             Circumvent(x, cut, y) :- Circumvent(x, cut, z), Edge(z, y),
-                                     Node(cut), if y != cut.
+                                     Node(cut), if (y != cut).
         };
         let res = query edges, nodes(), reachability(), cuts
                   select (x, cut, y)
@@ -429,7 +429,7 @@ mod Graph {
     ///
     pub def inDegrees(g: m[(t, t)]): Map[t, Int32] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
         use Option.{getWithDefault, map};
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let in = #{
             // Careful use of option type here to make sure the empty set is not
             // the bottom lattice element. That would exclude degrees of zero.
@@ -450,7 +450,7 @@ mod Graph {
     ///
     pub def outDegrees(g: m[(t, t)]): Map[t, Int32] \ Foldable.Aef[m] with Foldable[m], Order[t] = {
         use Option.{getWithDefault, map};
-        let edges = inject g into Edge;
+        let edges = inject g into Edge/2;
         let out = #{
             // Careful use of option type here to make sure the empty set is not
             // the bottom lattice element. That would exclude degrees of zero.

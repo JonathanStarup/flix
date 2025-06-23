@@ -22,7 +22,7 @@ import java.util.{List => JList}
 /// A list is either the empty list represented by `Nil`, or
 /// an element `v` followed by a list `vs` represented by `v :: vs`.
 ///
-pub enum List[t] with Sendable {
+pub enum List[t] {
     case Nil,
     case Cons(t, List[t])
 }
@@ -1247,7 +1247,7 @@ mod List {
     pub def unfold(f: s -> Option[(a, s)] \ ef, st: s): List[a] \ ef =
         def loop(sst, k) = match f(sst) {
             case None         => k(Nil)
-            case Some(a, st1) => loop(st1, ks -> k(a :: ks))
+            case Some((a, st1)) => loop(st1, ks -> k(a :: ks))
         };
         loop(st, identity)
 

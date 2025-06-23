@@ -29,16 +29,16 @@ def longestPalindromeSequence(s: String): Option[(Int32, Int32)] = {
         else false
     };
     // Inject the indices of the string into a predicate
-    let indices = inject List.range(0, length) into StringIndex/1;
+    let indices = inject List.range(0, length) into StringIndex;
     let p = #{
         // A single char is a palindrome of length 1
         LongestPalindrome(i, i; 1) :- StringIndex(i).
         // Two neighboring chars are a palindrome of length 2 if they are the same
-        LongestPalindrome(i, i+1; 2) :- StringIndex(i), if (sameChar(i, i+1)).
+        LongestPalindrome(i, i+1; 2) :- StringIndex(i), if sameChar(i, i+1).
         // If there is the same char on each side of a palindrome, that interval is a
         // palindrome with length two larger than the inner one
-        LongestPalindrome(b-1, e+1; l+2) :- if (b <= e and b-1 >= 0 and e+1 < length),
-            if (sameChar(b-1, e+1)), LongestPalindrome(b, e; l).
+        LongestPalindrome(b-1, e+1; l+2) :- if b <= e and b-1 >= 0 and e+1 < length,
+            if sameChar(b-1, e+1), LongestPalindrome(b, e; l).
     };
     let solution = solve p <+> indices;
     forM (

@@ -47,7 +47,7 @@ mod IDE {
     ///
     /// Solves the given IDE instances.
     ///
-    pub def runSolver(ide: IDE[p, n, d, f, l]): Vector[(n, d, l)]
+    pub def run(ide: IDE[p, n, d, f, l]): Vector[(n, d, l)]
         with LowerBound[f], JoinLattice[f], MeetLattice[f],
              LowerBound[l], UpperBound[l], JoinLattice[l], MeetLattice[l],
              Order[n], Order[d], Order[p], Order[f],  Order[l] =
@@ -127,7 +127,7 @@ mod IDE {
         };
 
 
-        let f1 = inject ide#cfg, ide#callGraph, ide#startNodes, ide#endNodes into CFG/2, CallGraph/2, StartNode/2, EndNode/2;
+        let f1 = inject ide#cfg, ide#callGraph, ide#startNodes, ide#endNodes into CFG, CallGraph, StartNode, EndNode;
 
         query p, f1 select (n, d, l) from Results(n, d; l)
 
@@ -422,7 +422,7 @@ def main(): Unit \ IO =
         case _ => Vector#{}
     };
 
-    let result = IDE.runSolver({
+    let result = IDE.run({
         zero            = "zero",
         main            = "main",
         cfg             = cfg,

@@ -22,7 +22,7 @@ eff Process {
     ///
     /// Immediately executes the command `cmd` passing the arguments `args`.
     ///
-    pub def exec(cmd: String, args: List[String]): Unit
+    def exec(cmd: String, args: List[String]): Unit
 
 }
 
@@ -36,10 +36,10 @@ mod Process {
     ///
     /// In other words, re-interprets the `Process` effect using the `Exec` effect.
     ///
-    pub def handle(f: a -> b \ ef): a -> b \ (ef - Process) + Exec = x ->
-        try {
+    pub def handle(f: a -> b \ ef): a -> b \ (ef - Process) + Exec + IO = x ->
+        run {
             f(x)
-        } with Process {
+        } with handler Process {
             def exec(cmd, args, k) = region rc {
                 let arr = List.toArray(rc, cmd :: args);
                 let pb = new ProcessBuilder(arr);
@@ -53,6 +53,6 @@ mod Process {
     ///
     /// In other words, re-interprets the `Process` effect using the `Exec` effect.
     ///
-    pub def run(f: Unit -> a \ ef): a \ (ef - Process) + Exec = handle(f)()
+    pub def runWithExec(f: Unit -> a \ ef): a \ (ef - Process) + Exec + IO = handle(f)()
 
 }

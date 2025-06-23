@@ -26,7 +26,7 @@ object TraitCompleter {
   /**
     * List of derivable traits.
     */
-  private val derivable_traits = List("Eq", "Order", "ToString", "Sendable", "Coerce")
+  private val derivable_traits = List("Eq", "Order", "ToString", "Coerce")
 
   /**
     * Returns a List of Completion for traits.
