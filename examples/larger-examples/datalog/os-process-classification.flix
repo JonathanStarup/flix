@@ -1,5 +1,5 @@
 pub def orphansAndZombies(processes: List[(processId, String, processId)], rootId: processId): {orphans = Vector[processId], zombies = Vector[processId]} with Order[processId] =
-    let p = inject processes into Process;
+    let p = inject processes into Process/3;
     let lp = #{
         Zombie(pid) :- Process(pid, "dead", parent), Process(parent, "alive", _).
         HasParent(pid) :- Process(pid, _, parent), Process(parent, _, _).

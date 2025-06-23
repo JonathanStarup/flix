@@ -4276,10 +4276,10 @@ mod TestVector {
     def toMutList06(): Bool = region rc {
         let l = Vector.toMutList(rc, Vector#{1, 2, 3});
         MutList.push!(4, l);
-        discard MutList.pop(l);
-        discard MutList.pop(l);
-        discard MutList.pop(l);
-        discard MutList.pop(l);
+        discard MutList.pop!(l);
+        discard MutList.pop!(l);
+        discard MutList.pop!(l);
+        discard MutList.pop!(l);
         Vector.equals(MutList.toVector(l), Vector#{})
     }
 

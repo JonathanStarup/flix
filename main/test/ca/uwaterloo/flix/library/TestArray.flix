@@ -5488,10 +5488,10 @@ mod TestArray {
     def toMutList06(): Bool = region rc {
         let v = Array.toMutList(rc, Array#{1, 2, 3} @ rc);
         MutList.push!(4, v);
-        discard MutList.pop(v);
-        discard MutList.pop(v);
-        discard MutList.pop(v);
-        discard MutList.pop(v);
+        discard MutList.pop!(v);
+        discard MutList.pop!(v);
+        discard MutList.pop!(v);
+        discard MutList.pop!(v);
         Array.sameElements(MutList.toArray(rc, v), Array#{} @ rc)
     }
 

@@ -4,7 +4,7 @@
 /// intervals that cover all the intervals in the input.
 
 def merge(intervals: List[(Int32, Int32)]): Vector[(Int32, Int32)] =
-    let i = inject intervals into Interval;
+    let i = inject intervals into Interval/2;
     let lp = #{
         // [a, ..., c, ..., b, ..., d]
         Interval(a, d) :-

@@ -1229,23 +1229,23 @@ mod TestMutList {
     def pop01(): Bool = region rc {
         let v = MutList.range(rc, 0, 6);
         let len = MutList.length(v);
-        let last = MutList.pop(v);
+        let last = MutList.pop!(v);
         MutList.length(v) == len - 1 and last == Some(5)
     }
 
     @test
     def pop02(): Bool = region rc {
         let v: MutList[Unit, _] = MutList.empty(rc);
-        MutList.pop(v) == None
+        MutList.pop!(v) == None
     }
 
     @test
     def pop03(): Bool = region rc {
         let v = MutList.range(rc, 1, 4);
-        let three = MutList.pop(v);
-        let two = MutList.pop(v);
-        let one = MutList.pop(v);
-        let none = MutList.pop(v);
+        let three = MutList.pop!(v);
+        let two = MutList.pop!(v);
+        let one = MutList.pop!(v);
+        let none = MutList.pop!(v);
         three == Some(3) and two == Some(2) and one == Some(1) and none == None
     }
 
@@ -1740,9 +1740,9 @@ mod TestMutList {
     @test
     def iterator03(): Bool = region rc {
         let l = List.toMutList(rc, 1 :: 2 :: 3 :: Nil);
-        discard MutList.pop(l);
-        discard MutList.pop(l);
-        discard MutList.pop(l);
+        discard MutList.pop!(l);
+        discard MutList.pop!(l);
+        discard MutList.pop!(l);
         let iter = MutList.iterator(rc, l);
         match Iterator.next(iter) {
             case None => true
@@ -1925,8 +1925,8 @@ mod TestMutList {
     @test
     def toArray03(): Bool = region rc {
         let v = Array.toMutList(rc, Array#{1, 2, 3} @ rc);
-        discard MutList.pop(v);
-        discard MutList.pop(v);
+        discard MutList.pop!(v);
+        discard MutList.pop!(v);
         Array.length(MutList.toArray(rc, v)) == 1
     }
 
