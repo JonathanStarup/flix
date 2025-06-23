@@ -21,7 +21,7 @@
 eff OutOfBounds {
 
     /// Stops execution with an error message.
-    def outOfBounds(msg: String): Void
+    pub def outOfBounds(msg: String): Void
 
 }
 
@@ -30,7 +30,7 @@ mod OutOfBounds {
     /// Turns the `OutOfBounds` effect into `Err(msg)`.
     @Experimental
     pub def asRes(f: a -> b \ ef): (a -> Result[String, b] \ ef - OutOfBounds) = {
-        x -> run Ok(f(x)) with handler OutOfBounds {
+        x -> try Ok(f(x)) with OutOfBounds {
             def outOfBounds(msg, _) = Err(msg)
         }
     }

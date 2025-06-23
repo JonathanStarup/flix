@@ -26,7 +26,7 @@ import java.util.{List => JList}
 ///
 /// Note - the constructors `Empty`, `One` and `Chain` should not be used directly.
 ///
-pub enum Chain[t] {
+pub enum Chain[t] with Sendable {
     case Empty
     case One(t)
     case Chain(Chain[t], Chain[t])
@@ -120,9 +120,9 @@ instance ToJava[Chain[a]] {
     pub def toJava(c: Chain[a]): JList \ IO = Adaptor.toList(c)
 }
 
-instance ToFlix[Chain[a]] {
+instance FromJava[Chain[a]] {
     type In = JList
-    pub def toFlix(l: JList): Chain[a] = region rc {
+    pub def fromJava(l: JList): Chain[a] = region rc {
         let it = unchecked_cast ((l.iterator(): _ \ IO) as _ \ rc);
         it |> Adaptor.fromIterator(rc, (Proxy.Proxy: Proxy[a])) |> Iterator.toChain
     }
@@ -885,7 +885,7 @@ mod Chain {
     /// The sort implementation is a Quicksort.
     ///
     pub def sort(c: Chain[a]): Chain[a] with Order[a] = region rc {
-        toArray(rc, c) !> Array.sort |> Array.toChain
+        toArray(rc, c) !> Array.sort! |> Array.toChain
     }
 
     /// Sort chain `c` so that elements are ordered from low to high according to the `Order` instance
@@ -896,7 +896,7 @@ mod Chain {
     /// The sort implementation is a Quicksort.
     ///
     pub def sortBy(f: a -> b, c: Chain[a]): Chain[a] with Order[b] = region rc {
-        toArray(rc, c) !> Array.sortBy(f) |> Array.toChain
+        toArray(rc, c) !> Array.sortBy!(f) |> Array.toChain
     }
 
     ///
@@ -907,7 +907,7 @@ mod Chain {
     /// The sort implementation is a Quicksort.
     ///
     pub def sortWith(cmp: (a,a) -> Comparison, c: Chain[a]): Chain[a] = region rc {
-        toArray(rc, c) !> Array.sortWith(cmp) |> Array.toChain
+        toArray(rc, c) !> Array.sortWith!(cmp) |> Array.toChain
     }
 
     ///

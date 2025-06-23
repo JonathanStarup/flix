@@ -21,7 +21,7 @@ mod Fixpoint {
     ///
     /// Represents a boxed value.
     ///
-    pub enum Boxed {
+    pub enum Boxed with Sendable {
         case BoxedBool(Bool)
         case BoxedChar(Char)
         case BoxedInt8(Int8)

@@ -24,7 +24,7 @@ pub eff Abort {
     ///
     /// The computation cannot be resumed.
     ///
-    def abort(m: String): Void
+    pub def abort(m: String): Void
 
 }
 
@@ -38,9 +38,9 @@ mod Abort {
     ///     - returns `Err(m)`  if the computation aborts with error message `m`.
     ///
     pub def handle(f: a -> b \ ef): a -> Result[String, b] \ (ef - Abort) = x ->
-        run {
+        try {
             Ok(f(x))
-        } with handler Abort {
+        } with Abort {
             def abort(m, _k) = Result.Err(m)
         }
 
@@ -50,6 +50,6 @@ mod Abort {
     /// Returns `Ok(f())` if the computation completes successfully without aborting.
     /// Returns `Err(m)`  if the computation aborts with error message `m`.
     ///
-    pub def runWithResult(f: Unit -> a \ ef): Result[String, a] \ (ef - Abort) = handle(f)()
+    pub def run(f: Unit -> a \ ef): Result[String, a] \ (ef - Abort) = handle(f)()
 
 }

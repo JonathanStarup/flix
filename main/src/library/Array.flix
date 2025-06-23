@@ -49,7 +49,6 @@ instance Iterable[Array[a, r]] {
 
 mod Array {
     import java.lang.Object
-    import java.lang.System
     import java.util.Arrays
     import java.util.{Random => JRandom};
 
@@ -78,8 +77,20 @@ mod Array {
     ///
     /// Returns a string representation of the given array `a`.
     ///
-    pub def toString(a: Array[a, r]): String \ r with ToString[a] = region rc {
-        "Array#{" + (Array.iterator(rc, a) |> Iterator.join(", ")) + "}"
+    pub def toString(a: Array[a, r]): String \ r with ToString[a] = region rc2 {
+        let sb = StringBuilder.empty(rc2);
+        let first = Ref.fresh(rc2, true);
+
+        StringBuilder.appendString!("Array#{", sb);
+
+        let f = x -> {
+            if (not Ref.get(first)) StringBuilder.appendString!(", ", sb) else Ref.put(false, first);
+            StringBuilder.appendString!("${x}", sb)
+        };
+        forEach(f, a);
+
+        StringBuilder.appendString!("}", sb);
+        StringBuilder.toString(sb)
     }
 
     ///
@@ -260,7 +271,7 @@ mod Array {
             copyOfRange(rc3, 0, len2, b)
         else {
             let out = copyOfRange(rc3, 0, len1 + len2, a);
-            updateSequence(len1, b, out);
+            updateSequence!(len1, b, out);
             out
         }
 
@@ -452,7 +463,7 @@ mod Array {
     ///
     /// Apply `f` to every element in array `arr`. Array `arr` is mutated.
     ///
-    pub def transform(f: a -> a \ ef, arr: Array[a, r]): Unit \ { ef, r } =
+    pub def transform!(f: a -> a \ ef, arr: Array[a, r]): Unit \ { ef, r } =
         let len = length(arr);
         def loop(i) = {
             if (i >= len)
@@ -476,7 +487,7 @@ mod Array {
     ///
     /// Apply `f` to every element in array `a` along with that element's index. Array `a` is mutated.
     ///
-    pub def transformWithIndex(f: (Int32, a) -> a \ ef, arr: Array[a, r]): Unit \ { ef, r } =
+    pub def transformWithIndex!(f: (Int32, a) -> a \ ef, arr: Array[a, r]): Unit \ { ef, r } =
         let len = length(arr);
         def loop(i) = {
             if (i >= len)
@@ -496,9 +507,17 @@ mod Array {
         init(rc1, i -> f(get(i, a)), len) |> flatten(rc1)
 
     ///
+    /// Returns the reverse of `a`.
+    ///
+    pub def reverse(rc1: Region[r1], a: Array[a, r]): Array[a, r1] \ { r, r1 } =
+        let len = length(a);
+        let end = len - 1;
+        init(rc1, i -> get(end - i, a), len)
+
+    ///
     /// Reverse the array `arr`, mutating it in place.
     ///
-    pub def reverse(arr: Array[a, r]): Unit \ r =
+    pub def reverse!(arr: Array[a, r]): Unit \ r =
         let len = length(arr);
         let halflen = len / 2;
         def loop(i, j) = {
@@ -576,10 +595,29 @@ mod Array {
         init(rc1, f, len)
 
     ///
+    /// Returns a copy of `a` with every occurrence of `src` replaced by `dst`.
+    ///
+    pub def replace(rc1: Region[r1], src: {src = a}, dst: {dst = a}, a: Array[a, r]): Array[a, r1] \ { r, r1 } with Eq[a] =
+        map(rc1, e -> if (e == src#src) dst#dst else e, a)
+
+    ///
     /// Replace every occurrence of `src` by `dst` in the array `a`, mutating it in place.
     ///
-    pub def replace(src: {src = a}, dst: {dst = a}, a: Array[a, r]): Unit \ r with Eq[a] =
-        transform(e -> if (e == src#src) dst#dst else e, a)
+    pub def replace!(src: {src = a}, dst: {dst = a}, a: Array[a, r]): Unit \ r with Eq[a] =
+        transform!(e -> if (e == src#src) dst#dst else e, a)
+
+    ///
+    /// Returns `b` with the `n` elements starting at index `i` replaced with the elements of `a`.
+    ///
+    /// If any of the indices `i, i+1, i+2, ... , i+n-1` are out of range in `b` then no patching is done at these indices.
+    /// If `a` becomes depleted then no further patching is done.
+    /// If patching occurs at index `i+j` in `b`, then the element at index `j` in `a` is used.
+    ///
+    pub def patch(rc3: Region[r3], i: Int32, n: Int32, a: Array[a, r1], b: Array[a, r2]): Array[a, r3] \ { r1, r2, r3 } =
+        let len1 = length(a);
+        let size = if (n > len1) len1 else n;
+        let sub = copyOfRange(rc3, 0, size, a);
+        updateSequence(rc3, i, sub, b)
 
     ///
     /// Update the mutable array `b` replacing `n` elements starting at index `i` with the corresponding elements of array `a`.
@@ -588,11 +626,11 @@ mod Array {
     /// If `a` becomes depleted then no further patching is done.
     /// If patching occurs at index `i+j` in `b`, then the element at index `j` in `a` is used.
     ///
-    pub def patch(i: Int32, n: Int32, a: Array[a, r1], b: Array[a, r2]): Unit \ { r1, r2 } = region rc3 {
+    pub def patch!(i: Int32, n: Int32, a: Array[a, r1], b: Array[a, r2]): Unit \ { r1, r2 } = region rc3 {
         let len1 = length(a);
         let size = if (n > len1) len1 else n;
         let sub = copyOfRange(rc3, 0, size, a);
-        updateSequence(i, sub, b)
+        updateSequence!(i, sub, b)
     }
 
     ///
@@ -644,7 +682,7 @@ mod Array {
     /// Helper function for `intercalate` which needs to do sucessive writing.
     ///
     def arrayWrites(pos: Int32, sub: Array[a, r1], out: Array[a, r2]): Int32 \ { r1, r2 } =
-        updateSequence(pos, sub, out);
+        updateSequence!(pos, sub, out);
         pos + length(sub)
 
     ///
@@ -1335,7 +1373,7 @@ mod Array {
             if (i >= len)
                 ()
             else {
-                if (f(get(i, a))) MutList.push(i, l) else ();
+                if (f(get(i, a))) MutList.push!(i, l) else ();
                 loop(i + 1)
             }
         };
@@ -1428,9 +1466,18 @@ mod Array {
         loop(0)
 
     ///
+    /// Returns a copy of `a` with the elements starting at index `i` replaced by `sub`.
+    ///
+    pub def updateSequence(rc3: Region[r3], i: Int32, sub: Array[a, r1], a: Array[a, r2]): Array[a, r3] \ { r1, r2, r3 } =
+        let end = i + length(sub);
+        let f = ix -> if (ix >= i and ix < end) get(ix - i, sub) else get(ix, a);
+        let len = length(a);
+        init(rc3, f, len)
+
+    ///
     /// Update the mutable array `a` with the elements starting at index `i` replaced by `sub`.
     ///
-    pub def updateSequence(i: Int32, sub: Array[a, r1], a: Array[a, r2]): Unit \ { r1, r2 } =
+    pub def updateSequence!(i: Int32, sub: Array[a, r1], a: Array[a, r2]): Unit \ { r1, r2 } =
         let end = i + length(sub);
         let f = { (ix, _) ->
             if (ix >= i and ix < end)
@@ -1444,17 +1491,56 @@ mod Array {
     /// Returns the concatenation of the string representation
     /// of each element in `a` with `sep` inserted between each element.
     ///
-    pub def join(sep: String, a: Array[a, r]): String \ r with ToString[a] = region rc {
-        Array.iterator(rc, a) |> Iterator.join(sep)
-    }
+    pub def join(sep: String, a: Array[a, r]): String \ r with ToString[a] =
+        joinWith(ToString.toString, sep, a)
 
     ///
     /// Returns the concatenation of the string representation
     /// of each element in `a` according to `f` with `sep` inserted between each element.
     ///
-    pub def joinWith(f: a -> String \ ef, sep: String, a: Array[a, r]): String \ { ef, r } = region rc {
-        Array.iterator(rc, a) |> Iterator.joinWith(f, sep)
+    pub def joinWith(f: a -> String \ ef, sep: String, a: Array[a, r]): String \ { ef, r } = region rc1 {
+        use StringBuilder.append!;
+        let lastSep = String.length(sep);
+        let sb = StringBuilder.empty(rc1);
+        forEach(x -> { append!(f(x), sb); append!(sep, sb) }, a);
+        StringBuilder.toString(sb) |> String.dropRight(lastSep)
     }
+
+    ///
+    /// Returns a sorted copy of array `a`, where the elements are ordered from low to high according to
+    /// their `Order` instance.
+    ///
+    /// The sort is not stable, i.e., equal elements may appear in a different order than in the input `a`.
+    ///
+    /// The sort implementation is a Quicksort.
+    ///
+    pub def sort(rc1: Region[r1], a: Array[a, r]): Array[a, r1] \ { r, r1 } with Order[a] =
+        sortWith(rc1, Order.compare, a)
+
+    ///
+    /// Returns a sorted copy of array `a`, where the elements are ordered from low to high according to
+    /// the `Order` instance for the values obtained by applying `f` to each element.
+    ///
+    /// The sort is not stable, i.e., equal elements may appear in a different order than in the input `a`.
+    ///
+    /// The sort implementation is a Quicksort.
+    ///
+    pub def sortBy(rc1: Region[r1], f: a -> b, a: Array[a, r]): Array[a, r1] \ { r, r1 } with Order[b] =
+        sortWith(rc1, Order.compare `on` f, a)
+
+    ///
+    /// Returns a sorted copy of array `a`, where the elements are ordered from low to high according to
+    /// the comparison function `cmp`.
+    ///
+    /// The sort is not stable, i.e., equal elements may appear in a different order than in the input `a`.
+    ///
+    /// The sort implementation is a Quicksort.
+    ///
+    pub def sortWith(rc1: Region[r1], cmp: (a,a) -> Comparison, a: Array[a, r]): Array[a, r1] \ { r, r1 } =
+        let len = length(a);
+        let b = copyOfRange(rc1, 0, len, a);
+        sortWith!(cmp, b);
+        b
 
     ///
     /// Sort array `a` so that elements are ordered from low to high according to their `Order` instance.
@@ -1464,8 +1550,8 @@ mod Array {
     ///
     /// The sort implementation is a Quicksort.
     ///
-    pub def sort(a: Array[a, r]): Unit \ r with Order[a] =
-        sortWith(Order.compare, a)
+    pub def sort!(a: Array[a, r]): Unit \ r with Order[a] =
+        sortWith!(Order.compare, a)
 
     ///
     /// Sort array `a` so that elements are ordered from low to high according to the `Order` instance for
@@ -1475,8 +1561,8 @@ mod Array {
     ///
     /// The sort implementation is a Quicksort.
     ///
-    pub def sortBy(f: a -> b, a: Array[a, r]): Unit \ r with Order[b] =
-        sortWith(Order.compare `on` f, a)
+    pub def sortBy!(f: a -> b, a: Array[a, r]): Unit \ r with Order[b] =
+        sortWith!(Order.compare `on` f, a)
 
     ///
     /// Sort array `a` so that elements are ordered from low to high according to the comparison function `cmp`.
@@ -1486,8 +1572,8 @@ mod Array {
     ///
     /// The sort implementation is a Quicksort.
     ///
-    pub def sortWith(cmp: (a,a) -> Comparison, a: Array[a, r]): Unit \ r =
-        sortWithin(cmp, 0, length(a) - 1, a)
+    pub def sortWith!(cmp: (a,a) -> Comparison, a: Array[a, r]): Unit \ r =
+        sortWithin!(cmp, 0, length(a) - 1, a)
 
     ///
     /// Sort array `a` between the indices `lo` and `hi` (both inclusive) so that elements in that range are ordered
@@ -1498,13 +1584,13 @@ mod Array {
     ///
     /// The sort implementation is a Quicksort.
     ///
-    pub def sortWithin(cmp: (a,a) -> Comparison, lo: Int32, hi: Int32, a: Array[a, r]): Unit \ r=
+    pub def sortWithin!(cmp: (a,a) -> Comparison, lo: Int32, hi: Int32, a: Array[a, r]): Unit \ r=
         if (lo >= hi)
             ()
         else {
             let p = quicksortPartition(cmp, a, lo, hi);
-            sortWithin(cmp, lo, p - 1, a);
-            sortWithin(cmp, p + 1, hi, a)
+            sortWithin!(cmp, lo, p - 1, a);
+            sortWithin!(cmp, p + 1, hi, a)
         }
 
     ///
@@ -1512,7 +1598,7 @@ mod Array {
     ///
     /// Precondition: `i` and `j` are within bounds.
     ///
-    pub def swap(i: Int32, j: Int32, a: Array[a, r]): Unit \ r =
+    pub def swap!(i: Int32, j: Int32, a: Array[a, r]): Unit \ r =
         let x = get(i, a);
         let y = get(j, a);
         Array.put(y, i, a);
@@ -1525,12 +1611,12 @@ mod Array {
         let pivot = get(hi, a);
         let i = forWithAccum(lo, hi, lo, (j,ix) ->
             if (cmp(get(j, a), pivot) == Comparison.LessThan) {
-                swap(ix, j, a);
+                swap!(ix, j, a);
                 ix+1
             } else
                 ix
             );
-        swap(i, hi, a);
+        swap!(i, hi, a);
         i
 
     ///
@@ -1547,27 +1633,12 @@ mod Array {
         }
 
     ///
-    /// Copies the range between `srcPos` (inclusive) to `srcPos + len` (exclusive) of `src` into `dst` starting from `dstPos` (inclusive).
-    /// A valid range has the following properties:
-    ///   0 <= len.
-    ///   0 <= `srcPos`.
-    ///   0 <= `dstPos`.
-    ///   `srcPos + len` <= `length(src)`.
-    ///   `dstPos + len` <= `length(dst)`.
-    ///
-    /// If `src` and `dst` refer to the same array the result will be as though the range was copied to a separate array before pasting to the `dst` array.
-    pub def copyInto(srcPos: { srcPos = Int32 }, dstPos: { dstPos = Int32 }, len: { len = Int32 }, src: { src = Array[a, r1] }, dst: Array[a, r2]): Unit \ { r1, r2 } =
-        let srcObj: Object = checked_cast(src#src);
-        let dstObj: Object = checked_cast(dst);
-        unchecked_cast(System.arraycopy(srcObj, srcPos#srcPos, dstObj, dstPos#dstPos, len#len) as _ \ { r1, r2 })
-
-    ///
     /// Copies the range between `b` (inclusive) and `e` (exclusive) of a into an empty array.
     ///
     /// A valid range has the following properties:
     ///   - 0 <= `b` <= `length(a)`.
     ///   - `e` >= `b`.
-    /// If the range is valid and greater than the length of `a`, the resulting array will have the length of the range
+    /// If the range is valid and greater than the length of `a`, the resulting array with have the length of the range
     /// and include the specified range of `a`.
     ///
     pub def copyOfRange(_: Region[r2], b: Int32, e: Int32, a: Array[a, r1]): Array[a, r2] \ { r1, r2 } =
@@ -1606,7 +1677,7 @@ mod Array {
         def loop(i) = {
             if (i > 0) {
                 let j = rnd.nextInt(i + 1);
-                Array.swap(i, j, a);
+                Array.swap!(i, j, a);
                 loop(i - 1)
             }
             else

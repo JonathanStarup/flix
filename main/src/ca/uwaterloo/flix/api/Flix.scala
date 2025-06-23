@@ -121,13 +121,15 @@ class Flix {
     "Div.flix" -> LocalResource.get("/src/library/Div.flix"),
     "Bool.flix" -> LocalResource.get("/src/library/Bool.flix"),
 
-    // Threads
+    // Channels and Threads
+    "Channel.flix" -> LocalResource.get("/src/library/Channel.flix"),
     "Thread.flix" -> LocalResource.get("/src/library/Thread.flix"),
     "Time.flix" -> LocalResource.get("/src/library/Time.flix"),
 
     // Built-in
     "Eq.flix" -> LocalResource.get("/src/library/Eq.flix"),
     "Hash.flix" -> LocalResource.get("/src/library/Hash.flix"),
+    "Sendable.flix" -> LocalResource.get("/src/library/Sendable.flix"),
     "Order.flix" -> LocalResource.get("/src/library/Order.flix"),
 
     // Lattices
@@ -161,7 +163,6 @@ class Flix {
     "BigDecimal.flix" -> LocalResource.get("/src/library/BigDecimal.flix"),
     "BigInt.flix" -> LocalResource.get("/src/library/BigInt.flix"),
     "Box.flix" -> LocalResource.get("/src/library/Box.flix"),
-    "BPlusTree.flix" -> LocalResource.get("/src/library/BPlusTree.flix"),
     "Chain.flix" -> LocalResource.get("/src/library/Chain.flix"),
     "Char.flix" -> LocalResource.get("/src/library/Char.flix"),
     "CodePoint.flix" -> LocalResource.get("/src/library/CodePoint.flix"),
@@ -191,16 +192,17 @@ class Flix {
     "String.flix" -> LocalResource.get("/src/library/String.flix"),
     "MultiMap.flix" -> LocalResource.get("/src/library/MultiMap.flix"),
 
-    "MutPriorityQueue.flix" -> LocalResource.get("/src/library/MutPriorityQueue.flix"),
+    "MutQueue.flix" -> LocalResource.get("/src/library/MutQueue.flix"),
     "MutDeque.flix" -> LocalResource.get("/src/library/MutDeque.flix"),
     "MutDisjointSets.flix" -> LocalResource.get("/src/library/MutDisjointSets.flix"),
     "MutList.flix" -> LocalResource.get("/src/library/MutList.flix"),
     "MutSet.flix" -> LocalResource.get("/src/library/MutSet.flix"),
     "MutMap.flix" -> LocalResource.get("/src/library/MutMap.flix"),
 
-    "IoError.flix" -> LocalResource.get("/src/library/IoError.flix"),
+    "Files.flix" -> LocalResource.get("/src/library/Files.flix"),
+    "IOError.flix" -> LocalResource.get("/src/library/IOError.flix"),
     "Reader.flix" -> LocalResource.get("/src/library/Reader.flix"),
-    "Writer.flix" -> LocalResource.get("/src/library/Writer.flix"),
+    "File.flix" -> LocalResource.get("/src/library/File.flix"),
 
     "Environment.flix" -> LocalResource.get("/src/library/Environment.flix"),
 
@@ -226,7 +228,6 @@ class Flix {
     "Witherable.flix" -> LocalResource.get("/src/library/Witherable.flix"),
     "UnorderedFoldable.flix" -> LocalResource.get("/src/library/UnorderedFoldable.flix"),
     "Collectable.flix" -> LocalResource.get("/src/library/Collectable.flix"),
-    "MutCollectable.flix" -> LocalResource.get("/src/library/MutCollectable.flix"),
 
     "Validation.flix" -> LocalResource.get("/src/library/Validation.flix"),
 
@@ -235,7 +236,6 @@ class Flix {
     "GetOpt.flix" -> LocalResource.get("/src/library/GetOpt.flix"),
     "Chalk.flix" -> LocalResource.get("/src/library/Chalk.flix"),
 
-    "Channel.flix" -> LocalResource.get("/src/library/Channel.flix"),
     "Concurrent/Channel.flix" -> LocalResource.get("/src/library/Concurrent/Channel.flix"),
     "Concurrent/Condition.flix" -> LocalResource.get("/src/library/Concurrent/Condition.flix"),
     "Concurrent/CyclicBarrier.flix" -> LocalResource.get("/src/library/Concurrent/CyclicBarrier.flix"),
@@ -264,53 +264,16 @@ class Flix {
     "Fixpoint/Ast/PrecedenceGraph.flix" -> LocalResource.get("/src/library/Fixpoint/Ast/PrecedenceGraph.flix"),
     "Fixpoint/Ast/Ram.flix" -> LocalResource.get("/src/library/Fixpoint/Ast/Ram.flix"),
 
-
-    "Fixpoint/Toggle.flix" -> LocalResource.get("/src/library/Fixpoint/Toggle.flix"),
-    "Fixpoint/SolverApi.flix" -> LocalResource.get("/src/library/Fixpoint/SolverApi.flix"),
-
-
-    "Fixpoint3/AtomicCounter.flix" -> LocalResource.get("/src/library/Fixpoint3/AtomicCounter.flix"),
-    "Fixpoint3/Boxed.flix" -> LocalResource.get("/src/library/Fixpoint3/Boxed.flix"),
-    "Fixpoint3/BoxingType.flix" -> LocalResource.get("/src/library/Fixpoint3/BoxingType.flix"),
-    "Fixpoint3/Counter.flix" -> LocalResource.get("/src/library/Fixpoint3/Counter.flix"),
-    "Fixpoint3/Util.flix" -> LocalResource.get("/src/library/Fixpoint3/Util.flix"),
-    "Fixpoint3/Predicates.flix" -> LocalResource.get("/src/library/Fixpoint3/Predicates.flix"),
-    "Fixpoint3/ReadWriteLock.flix" -> LocalResource.get("/src/library/Fixpoint3/ReadWriteLock.flix"),
-    "Fixpoint3/Solver.flix" -> LocalResource.get("/src/library/Fixpoint3/Solver.flix"),
-    "Fixpoint3/UniqueInts.flix" -> LocalResource.get("/src/library/Fixpoint3/UniqueInts.flix"),
-
-    "Fixpoint3/Ast/Ram.flix" -> LocalResource.get("/src/library/Fixpoint3/Ast/Ram.flix"),
-    "Fixpoint3/Ast/ExecutableRam.flix" -> LocalResource.get("/src/library/Fixpoint3/Ast/ExecutableRam.flix"),
-
-    "Fixpoint3/Phase/RenamePredSyms.flix" -> LocalResource.get("/src/library/Fixpoint3/Phase/RenamePredSyms.flix"),
-
+    "App.flix" -> LocalResource.get("/src/library/App.flix"),
     "Abort.flix" -> LocalResource.get("/src/library/Abort.flix"),
     "Clock.flix" -> LocalResource.get("/src/library/Clock.flix"),
-    "Dns.flix" -> LocalResource.get("/src/library/Dns.flix"),
-    "DnsWithResult.flix" -> LocalResource.get("/src/library/DnsWithResult.flix"),
-    "Http.flix" -> LocalResource.get("/src/library/Http.flix"),
-    "HttpWithResult.flix" -> LocalResource.get("/src/library/HttpWithResult.flix"),
     "Exit.flix" -> LocalResource.get("/src/library/Exit.flix"),
     "Eff/BiasedCoin.flix" -> LocalResource.get("/src/library/Eff/BiasedCoin.flix"),
     "Eff/RandomCoin.flix" -> LocalResource.get("/src/library/Eff/RandomCoin.flix"),
     "Logger.flix" -> LocalResource.get("/src/library/Logger.flix"),
-    "FileRead.flix" -> LocalResource.get("/src/library/FileRead.flix"),
-    "FileReadWithResult.flix" -> LocalResource.get("/src/library/FileReadWithResult.flix"),
-    "FileWrite.flix" -> LocalResource.get("/src/library/FileWrite.flix"),
-    "FileWriteWithResult.flix" -> LocalResource.get("/src/library/FileWriteWithResult.flix"),
-    "IpAddr.flix" -> LocalResource.get("/src/library/IpAddr.flix"),
-    "Ping.flix" -> LocalResource.get("/src/library/Ping.flix"),
-    "PingWithResult.flix" -> LocalResource.get("/src/library/PingWithResult.flix"),
-    "ProcessHandle.flix" -> LocalResource.get("/src/library/ProcessHandle.flix"),
+    "FilePath.flix" -> LocalResource.get("/src/library/FilePath.flix"),
     "Process.flix" -> LocalResource.get("/src/library/Process.flix"),
-    "ProcessWithResult.flix" -> LocalResource.get("/src/library/ProcessWithResult.flix"),
     "Severity.flix" -> LocalResource.get("/src/library/Severity.flix"),
-    "TcpBind.flix" -> LocalResource.get("/src/library/TcpBind.flix"),
-    "TcpAccept.flix" -> LocalResource.get("/src/library/TcpAccept.flix"),
-    "TcpAcceptWithResult.flix" -> LocalResource.get("/src/library/TcpAcceptWithResult.flix"),
-    "TcpServer.flix" -> LocalResource.get("/src/library/TcpServer.flix"),
-    "TcpSocket.flix" -> LocalResource.get("/src/library/TcpSocket.flix"),
-    "TcpBindWithResult.flix" -> LocalResource.get("/src/library/TcpBindWithResult.flix"),
     "TimeUnit.flix" -> LocalResource.get("/src/library/TimeUnit.flix"),
 
     "Graph.flix" -> LocalResource.get("/src/library/Graph.flix"),
@@ -318,7 +281,7 @@ class Flix {
     "Regex.flix" -> LocalResource.get("/src/library/Regex.flix"),
     "Adaptor.flix" -> LocalResource.get("/src/library/Adaptor.flix"),
     "ToJava.flix" -> LocalResource.get("/src/library/ToJava.flix"),
-    "ToFlix.flix" -> LocalResource.get("/src/library/ToFlix.flix"),
+    "FromJava.flix" -> LocalResource.get("/src/library/FromJava.flix"),
   )
 
   /**

@@ -21,24 +21,23 @@ mod Fixpoint.Ast.Datalog {
     use Fixpoint.PredSymsOf.predSymsOf
     use Fixpoint.SubstitutePredSym
     use Fixpoint.SubstitutePredSym.substitute
-    use Fixpoint.Ast.Shared.{Denotation, PredSym}
-    use Fixpoint.Ast.Shared.{BoxedDenotation => Denotation}
-    use Fixpoint.Boxed
-    use Fixpoint3.Ast.Ram.RelSym
+    use Fixpoint.Ast.Ram.RamSym
+    use Fixpoint.Ast.Shared.Denotation
+    use Fixpoint.Ast.Shared.PredSym
 
     /////////////////////////////////////////////////////////////////////////////
     // Datalog                                                                 //
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum Datalog {
-        case Datalog(Vector[Constraint], Vector[Constraint])
-        case Model(Map[RelSym, Map[Vector[Boxed], Boxed]])
-        case Join(Datalog, Datalog)
+    pub enum Datalog[v] {
+        case Datalog(Vector[Constraint[v]], Vector[Constraint[v]])
+        case Model(Map[RamSym[v], Map[Vector[v], v]])
+        case Join(Datalog[v], Datalog[v])
     }
 
-    instance PredSymsOf[Datalog] {
-        pub def predSymsOf(x: Datalog): Set[PredSym] = match x {
+    instance PredSymsOf[Datalog[v]] {
+        pub def predSymsOf(x: Datalog[v]): Set[PredSym] = match x {
             case Datalog.Datalog(facts, rules) =>
                 let factSyms = facts |> Vector.map(predSymsOf) |> Monoid.fold;
                 let ruleSyms = rules |> Vector.map(predSymsOf) |> Monoid.fold;
@@ -48,8 +47,8 @@ mod Fixpoint.Ast.Datalog {
         }
     }
 
-    instance SubstitutePredSym[Datalog] {
-        pub def substitute(x: Datalog, s: Map[PredSym, PredSym]): Datalog = match x {
+    instance SubstitutePredSym[Datalog[v]] {
+        pub def substitute(x: Datalog[v], s: Map[PredSym, PredSym]): Datalog[v] = match x {
             case Datalog.Datalog(facts, rules) =>
                 let newFacts = Vector.map(c -> substitute(c, s), facts);
                 let newRules = Vector.map(c -> substitute(c, s), rules);
@@ -64,21 +63,21 @@ mod Fixpoint.Ast.Datalog {
         }
     }
 
-    instance ToString[Datalog] {
-        pub def toString(cs: Datalog): String = match cs {
+    instance ToString[Datalog[v]] {
+        pub def toString(cs: Datalog[v]): String = match cs {
             case Datalog.Datalog(facts, rules) => region rc {
                 Iterator.append(Vector.iterator(rc, facts), Vector.iterator(rc, rules))
                     |> Iterator.join(String.lineSeparator())
             }
             case Datalog.Model(db) => region rc {
-                use Fixpoint3.Ast.Ram.toDenotation;
+                use Fixpoint.Ast.Ram.toDenotation;
                 Map.iterator(rc, db)
-                    |> Iterator.flatMap(match (relSym, rel) -> {
+                    |> Iterator.flatMap(match (ramSym, rel) -> {
                         Map.iterator(rc, rel) |> Iterator.map(match (tuple, lat) -> {
                             let tupleString = tuple |> Vector.map(Debug.stringify) |> Vector.join(", ");
-                            match toDenotation(relSym) {
-                                case Denotation.Relational => "${relSym}(${tupleString})."
-                                case Denotation.Latticenal(_, _, _, _) => "${relSym}(${tupleString}; %{lat})."
+                            match toDenotation(ramSym) {
+                                case Denotation.Relational => "${ramSym}(${tupleString})."
+                                case Denotation.Latticenal(_) => "${ramSym}(${tupleString}; %{lat})."
                             }
                         })
                     })
@@ -97,12 +96,12 @@ mod Fixpoint.Ast.Datalog {
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum Constraint {
-        case Constraint(HeadPredicate, Vector[BodyPredicate])
+    pub enum Constraint[v] {
+        case Constraint(HeadPredicate[v], Vector[BodyPredicate[v]])
     }
 
-    instance PredSymsOf[Constraint] {
-        pub def predSymsOf(x: Constraint): Set[PredSym] = match x {
+    instance PredSymsOf[Constraint[v]] {
+        pub def predSymsOf(x: Constraint[v]): Set[PredSym] = match x {
             case Constraint.Constraint(head, body) =>
                 let headSyms = predSymsOf(head);
                 let bodySyms = Vector.map(predSymsOf, body);
@@ -110,8 +109,8 @@ mod Fixpoint.Ast.Datalog {
         }
     }
 
-    instance SubstitutePredSym[Constraint] {
-        pub def substitute(x: Constraint, s: Map[PredSym, PredSym]): Constraint = match x {
+    instance SubstitutePredSym[Constraint[v]] {
+        pub def substitute(x: Constraint[v], s: Map[PredSym, PredSym]): Constraint[v] = match x {
             case Constraint.Constraint(head, body) =>
                 let newHead = substitute(head, s);
                 let newBody = Vector.map(p -> substitute(p, s), body);
@@ -119,8 +118,8 @@ mod Fixpoint.Ast.Datalog {
         }
     }
 
-    instance ToString[Constraint] {
-        pub def toString(c: Constraint): String =
+    instance ToString[Constraint[v]] {
+        pub def toString(c: Constraint[v]): String =
             match c {
                 case Constraint.Constraint(head, body) =>
                     if (Vector.length(body) == 0)
@@ -135,29 +134,29 @@ mod Fixpoint.Ast.Datalog {
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum HeadPredicate {
-        case HeadAtom(PredSym, Denotation, Vector[HeadTerm])
+    pub enum HeadPredicate[v] {
+        case HeadAtom(PredSym, Denotation[v], Vector[HeadTerm[v]])
     }
 
-    instance PredSymsOf[HeadPredicate] {
-        pub def predSymsOf(x: HeadPredicate): Set[PredSym] = match x {
+    instance PredSymsOf[HeadPredicate[v]] {
+        pub def predSymsOf(x: HeadPredicate[v]): Set[PredSym] = match x {
             case HeadPredicate.HeadAtom(predSym, _, _ ) => Set.singleton(predSym)
         }
     }
 
-    instance SubstitutePredSym[HeadPredicate] {
-        pub def substitute(x: HeadPredicate, s: Map[PredSym, PredSym]): HeadPredicate = match x {
+    instance SubstitutePredSym[HeadPredicate[v]] {
+        pub def substitute(x: HeadPredicate[v], s: Map[PredSym, PredSym]): HeadPredicate[v] = match x {
             case HeadPredicate.HeadAtom(predSym, den, terms) =>
                 let newSym = Map.getWithDefault(predSym, predSym, s);
                 HeadPredicate.HeadAtom(newSym, den, terms)
         }
     }
 
-    instance ToString[HeadPredicate] {
-        pub def toString(head: HeadPredicate): String =
+    instance ToString[HeadPredicate[v]] {
+        pub def toString(head: HeadPredicate[v]): String =
             match head {
                 case HeadPredicate.HeadAtom(predSym, Denotation.Relational, terms) => "${predSym}(${terms |> Vector.join(", ")})"
-                case HeadPredicate.HeadAtom(predSym, Denotation.Latticenal(_, _, _, _), terms) =>
+                case HeadPredicate.HeadAtom(predSym, Denotation.Latticenal(_), terms) =>
                     let (keyTerms, latticeTerms) = Vector.splitAt(Vector.length(terms)-1, terms);
                     match Vector.head(latticeTerms) {
                         case None    => "${predSym}(${keyTerms |> Vector.join(", ")})"
@@ -171,26 +170,26 @@ mod Fixpoint.Ast.Datalog {
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum BodyPredicate {
-        case BodyAtom(PredSym, Denotation, Polarity, Fixity, Vector[BodyTerm])
-        case Functional(Vector[VarSym], Vector[Boxed] -> Vector[Vector[Boxed]], Vector[VarSym])
+    pub enum BodyPredicate[v] {
+        case BodyAtom(PredSym, Denotation[v], Polarity, Fixity, Vector[BodyTerm[v]])
+        case Functional(Vector[VarSym], Vector[v] -> Vector[Vector[v]], Vector[VarSym])
         case Guard0(Unit -> Bool)
-        case Guard1(Boxed -> Bool, VarSym)
-        case Guard2(Boxed -> Boxed-> Bool, VarSym, VarSym)
-        case Guard3(Boxed -> Boxed-> Boxed-> Bool, VarSym, VarSym, VarSym)
-        case Guard4(Boxed -> Boxed-> Boxed-> Boxed-> Bool, VarSym, VarSym, VarSym, VarSym)
-        case Guard5(Boxed -> Boxed-> Boxed-> Boxed-> Boxed-> Bool, VarSym, VarSym, VarSym, VarSym, VarSym)
+        case Guard1(v -> Bool, VarSym)
+        case Guard2(v -> v -> Bool, VarSym, VarSym)
+        case Guard3(v -> v -> v -> Bool, VarSym, VarSym, VarSym)
+        case Guard4(v -> v -> v -> v -> Bool, VarSym, VarSym, VarSym, VarSym)
+        case Guard5(v -> v -> v -> v -> v -> Bool, VarSym, VarSym, VarSym, VarSym, VarSym)
     }
 
-    instance PredSymsOf[BodyPredicate] {
-        pub def predSymsOf(x: BodyPredicate): Set[PredSym] = match x {
+    instance PredSymsOf[BodyPredicate[v]] {
+        pub def predSymsOf(x: BodyPredicate[v]): Set[PredSym] = match x {
             case BodyPredicate.BodyAtom(predSym, _, _, _, _)    => Set.singleton(predSym)
             case _                                              => Set.empty()
         }
     }
 
-    instance SubstitutePredSym[BodyPredicate] {
-        pub def substitute(x: BodyPredicate, s: Map[PredSym, PredSym]): BodyPredicate = match x {
+    instance SubstitutePredSym[BodyPredicate[v]] {
+        pub def substitute(x: BodyPredicate[v], s: Map[PredSym, PredSym]): BodyPredicate[v] = match x {
             case BodyPredicate.BodyAtom(predSym, den, polarity, fixity, terms) =>
                 let newSym = Map.getWithDefault(predSym, predSym, s);
                 BodyPredicate.BodyAtom(newSym, den, polarity, fixity, terms)
@@ -198,8 +197,8 @@ mod Fixpoint.Ast.Datalog {
         }
     }
 
-    instance ToString[BodyPredicate] {
-        pub def toString(body: BodyPredicate): String =
+    instance ToString[BodyPredicate[v]] {
+        pub def toString(body: BodyPredicate[v]): String =
             def polarityPrefix(p) = match p {
                 case Polarity.Negative => "not "
                 case Polarity.Positive => ""
@@ -211,7 +210,7 @@ mod Fixpoint.Ast.Datalog {
             match body {
                 case BodyPredicate.BodyAtom(predSym, Denotation.Relational, p, f, terms) =>
                     "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${terms |> Vector.join(", ")})"
-                case BodyPredicate.BodyAtom(predSym, Denotation.Latticenal(_, _, _, _), p, f, terms) =>
+                case BodyPredicate.BodyAtom(predSym, Denotation.Latticenal(_), p, f, terms) =>
                     let n = Vector.length(terms)-1;
                     let (keyTerms, latticeTerms) = (Vector.take(n, terms), Vector.drop(n, terms));
                     match Vector.head(latticeTerms) {
@@ -233,19 +232,19 @@ mod Fixpoint.Ast.Datalog {
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum HeadTerm {
+    pub enum HeadTerm[v] {
         case Var(VarSym)
-        case Lit(Boxed)
-        case App0(Unit -> Boxed)
-        case App1(Boxed -> Boxed, VarSym)
-        case App2(Boxed -> Boxed-> Boxed, VarSym, VarSym)
-        case App3(Boxed -> Boxed-> Boxed-> Boxed, VarSym, VarSym, VarSym)
-        case App4(Boxed -> Boxed-> Boxed-> Boxed-> Boxed, VarSym, VarSym, VarSym, VarSym)
-        case App5(Boxed -> Boxed-> Boxed-> Boxed-> Boxed-> Boxed, VarSym, VarSym, VarSym, VarSym, VarSym)
+        case Lit(v)
+        case App0(Unit -> v)
+        case App1(v -> v, VarSym)
+        case App2(v -> v -> v, VarSym, VarSym)
+        case App3(v -> v -> v -> v, VarSym, VarSym, VarSym)
+        case App4(v -> v -> v -> v -> v, VarSym, VarSym, VarSym, VarSym)
+        case App5(v -> v -> v -> v -> v -> v, VarSym, VarSym, VarSym, VarSym, VarSym)
     }
 
-    instance ToString[HeadTerm] {
-        pub def toString(term: HeadTerm): String = match term {
+    instance ToString[HeadTerm[v]] {
+        pub def toString(term: HeadTerm[v]): String = match term {
             case HeadTerm.Var(varSym) => "${varSym}"
             case HeadTerm.Lit(v) => "%{v}"
             case HeadTerm.App0(_) => "<clo>()"
@@ -262,14 +261,14 @@ mod Fixpoint.Ast.Datalog {
     /////////////////////////////////////////////////////////////////////////////
 
     @Internal
-    pub enum BodyTerm {
+    pub enum BodyTerm[v] {
         case Wild
         case Var(VarSym)
-        case Lit(Boxed)
+        case Lit(v)
     }
 
-    instance ToString[BodyTerm] {
-        pub def toString(term: BodyTerm): String = match term {
+    instance ToString[BodyTerm[v]] {
+        pub def toString(term: BodyTerm[v]): String = match term {
             case BodyTerm.Wild => "_"
             case BodyTerm.Var(varSym) => ToString.toString(varSym)
             case BodyTerm.Lit(v) => Debug.stringify(v)

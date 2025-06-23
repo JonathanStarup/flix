@@ -140,7 +140,7 @@ mod Regex {
     /// at any position within the string `s`.
     ///
     pub def isSubmatch(rgx: Regex, s: String): Bool = region rc {
-        newMatcher(rc, rgx, s) |> find
+        newMatcher(rc, rgx, s) |> find!
     }
 
     ///
@@ -149,8 +149,8 @@ mod Regex {
     /// If `substr` regexp matches the empty string, positions where an empty match
     /// has been recognized will be returned.
     ///
-    pub def indices(substr: Regex, s: String): List[Int32] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def indices(substr: {substr = Regex}, s: String): List[Int32] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match foldSubmatches(Chain.snoc, Chain.empty(), matcherStart, m) {
             case Ok(c)  => Chain.toList(c)
             case Err(_) => Nil
@@ -162,8 +162,8 @@ mod Regex {
     ///
     /// Returns `Nil` if `substr` is the empty string.
     ///
-    pub def submatches(substr: Regex, s: String): List[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def submatches(substr: {substr = Regex}, s: String): List[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match foldSubmatches(Chain.snoc, Chain.empty(), matcherContent, m) {
             case Ok(c)  => Chain.toList(c)
             case Err(_) => Nil
@@ -173,8 +173,8 @@ mod Regex {
     ///
     /// Count the occurrences of `substr` in string `s`.
     ///
-    pub def countSubmatches(substr: Regex, s: String): Int32 = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def countSubmatches(substr: {substr = Regex}, s: String): Int32 = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match foldSubmatches((acc, _) -> acc + 1, 0, matcherStart, m) {
             case Ok(n)  => n
             case Err(_) => 0
@@ -182,10 +182,10 @@ mod Regex {
     }
 
     ///
-    /// Splits the string `s` around matches of the Regex `rgx`.
+    /// Splits the string `s` around matches of the Regex `regex`.
     ///
-    pub def split(rgx: Regex, s: String): List[String] =
-        unsafe Array.toList(unsafe rgx.split(s))
+    pub def split(regex: {regex = Regex}, s: String): List[String] =
+        unsafe Array.toList(unsafe regex#regex.split(s))
 
     ///
     /// Returns string `s` with every match of the Regex `src` replaced by the string `dst`.
@@ -206,8 +206,8 @@ mod Regex {
     ///
     /// Returns `true` if the string `s` starts the Regex `prefix`.
     ///
-    pub def startsWith(prefix: Regex, s: String): Bool = region rc {
-        let Matcher(m1) = newMatcher(rc, prefix, s);
+    pub def startsWith(prefix: {prefix = Regex}, s: String): Bool = region rc {
+        let Matcher(m1) = newMatcher(rc, prefix#prefix, s);
         unsafe m1.lookingAt()
     }
 
@@ -217,8 +217,8 @@ mod Regex {
     /// This will be slower than `startsWith` because there is no primitive Java function
     /// to call, instead the matches of `patt` are iterated until the last one is found.
     ///
-    pub def endsWith(suffix: Regex, s: String): Bool = region rc {
-        let m = newMatcher(rc, suffix, s);
+    pub def endsWith(suffix: {suffix = Regex}, s: String): Bool = region rc {
+        let m = newMatcher(rc, suffix#suffix, s);
         match lastSubmatch(matcherRange, m) {
             case Err(_)  => false
             case Ok(rng) => String.length(s) == rng#end
@@ -228,8 +228,8 @@ mod Regex {
     ///
     /// Returns `Some(prefix)` of string `s` if its prefix matches `substr`.
     ///
-    pub def getPrefix(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def getPrefix(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match firstSubmatch(matcherRange, m) {
             case Err(_) => None
             case Ok(r)  => if (r#start == 0) Some(String.takeLeft(r#end, s)) else None
@@ -239,8 +239,8 @@ mod Regex {
     ///
     /// Returns `Some(suffix)` of string `s` if its suffix matches `substr`.
     ///
-    pub def getSuffix(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def getSuffix(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match lastSubmatch(matcherRange, m) {
             case Err(_) => None
             case Ok(r)  => if (r#end == String.length(s)) Some(String.dropLeft(r#start, s)) else None
@@ -250,8 +250,8 @@ mod Regex {
     ///
     /// Returns `Some(suffix)` of string `s` if its prefix matches `substr`.
     ///
-    pub def stripPrefix(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def stripPrefix(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match firstSubmatch(matcherRange, m) {
             case Err(_) => None
             case Ok(r)  => if (r#start == 0) Some(String.dropLeft(r#end, s)) else None
@@ -261,8 +261,8 @@ mod Regex {
     ///
     /// Returns `Some(prefix)` of string `s` if its suffix matches `substr`.
     ///
-    pub def stripSuffix(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def stripSuffix(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match lastSubmatch(matcherRange, m) {
             case Err(_) => None
             case Ok(r)  => if (r#end == String.length(s)) Some(String.takeLeft(r#start, s)) else None
@@ -274,8 +274,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def indexOfFirst(substr: Regex, s: String): Option[Int32] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def indexOfFirst(substr: {substr = Regex}, s: String): Option[Int32] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         firstSubmatch(matcherStart, m) |> Result.toOption
     }
 
@@ -284,8 +284,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def indexOfLast(substr: Regex, s: String): Option[Int32] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def indexOfLast(substr: {substr = Regex}, s: String): Option[Int32] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         lastSubmatch(matcherStart, m) |> Result.toOption
     }
 
@@ -294,8 +294,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def getFirst(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def getFirst(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         firstSubmatch(matcherContent, m) |> Result.toOption
     }
 
@@ -304,8 +304,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def getLast(substr: Regex, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def getLast(substr: {substr = Regex}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         lastSubmatch(matcherContent, m) |> Result.toOption
     }
 
@@ -314,9 +314,9 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def indexOfFirstWithOffset(substr: Regex, offset: Int32, s: String): Option[Int32] = region rc {
-        let m = newMatcher(rc, substr, s);
-        match setBounds(start = offset, end = String.length(s), m) {
+    pub def indexOfFirstWithOffset(substr: {substr = Regex}, offset: {offset = Int32}, s: String): Option[Int32] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
+        match setBounds!(start = offset#offset, end = String.length(s), m) {
             case Ok()   => firstSubmatch(matcherStart, m) |> Result.toOption
             case Err(_) => None
         }
@@ -327,9 +327,9 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def indexOfLastWithOffset(substr: Regex, offset: Int32, s: String): Option[Int32] = region rc {
-        let m = newMatcher(rc, substr, s);
-        match setBounds(start = offset, end = String.length(s), m) {
+    pub def indexOfLastWithOffset(substr: {substr = Regex}, offset: {offset = Int32}, s: String): Option[Int32] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
+        match setBounds!(start = offset#offset, end = String.length(s), m) {
             case Ok()   => lastSubmatch(matcherStart, m) |> Result.toOption
             case Err(_) => None
         }
@@ -340,9 +340,9 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def getFirstWithOffset(substr: Regex, offset: Int32, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
-        match setBounds(start = offset, end = String.length(s), m) {
+    pub def getFirstWithOffset(substr: {substr = Regex}, offset: {offset = Int32}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
+        match setBounds!(start = offset#offset, end = String.length(s), m) {
             case Ok()   => firstSubmatch(matcherContent, m) |> Result.toOption
             case Err(_) => None
         }
@@ -353,9 +353,9 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` return None.
     ///
-    pub def getLastWithOffset(substr: Regex, offset: Int32, s: String): Option[String] = region rc {
-        let m = newMatcher(rc, substr, s);
-        match setBounds(start = offset, end = String.length(s), m) {
+    pub def getLastWithOffset(substr: {substr = Regex}, offset: {offset = Int32}, s: String): Option[String] = region rc {
+        let m = newMatcher(rc, substr#substr, s);
+        match setBounds!(start = offset#offset, end = String.length(s), m) {
             case Ok()   => lastSubmatch(matcherContent, m) |> Result.toOption
             case Err(_) => None
         }
@@ -365,8 +365,8 @@ mod Regex {
     /// Find the first instance of Regex `substr` in string `s`, return a pair of the
     /// prefix of string `s` up to `sub` and the rest of string `s` including `sub`.
     ///
-    pub def breakOnFirst(substr: Regex, s: String): (String, String) = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def breakOnFirst(substr: {substr = Regex}, s: String): (String, String) = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match firstSubmatch(matcherRange, m) {
             case Err(_) => (s, "")
             case Ok(r)  => (String.sliceLeft(end = r#start, s), String.sliceRight(start = r#start, s))
@@ -377,8 +377,8 @@ mod Regex {
     /// Find the first instance of Regex `substr` in string `s`, return a pair of the
     /// prefix of string `s` up to and including `sub` and the rest of string `s` after `sub`.
     ///
-    pub def breakAfterFirst(substr: Regex, s: String): (String, String) = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def breakAfterFirst(substr: {substr = Regex}, s: String): (String, String) = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match firstSubmatch(matcherRange, m) {
             case Err(_) => (s, "")
             case Ok(r)  => (String.sliceLeft(end = r#end, s), String.sliceRight(start = r#end, s))
@@ -389,8 +389,8 @@ mod Regex {
     /// Find the last instance of `substr` in string `s`, return a pair of the
     /// initial string including `substr` and suffix from `substr`.
     ///
-    pub def breakOnLast(substr: Regex, s: String): (String, String) = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def breakOnLast(substr: {substr = Regex}, s: String): (String, String) = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match lastSubmatch(matcherRange, m) {
             case Err(_) => (s, "")
             case Ok(r)  => (String.sliceLeft(end = r#end, s), String.sliceRight(start = r#end, s))
@@ -401,8 +401,8 @@ mod Regex {
     /// Find the last instance of `substr` in string `s`, return a pair of the
     /// initial string including `substr` and suffix from `substr`.
     ///
-    pub def breakBeforeLast(substr: Regex, s: String): (String, String) = region rc {
-        let m = newMatcher(rc, substr, s);
+    pub def breakBeforeLast(substr: {substr = Regex}, s: String): (String, String) = region rc {
+        let m = newMatcher(rc, substr#substr, s);
         match lastSubmatch(matcherRange, m) {
             case Err(_) => (s, "")
             case Ok(r)  => (String.sliceLeft(end = r#start, s), String.sliceRight(start = r#start, s))
@@ -429,7 +429,7 @@ mod Regex {
     ///
     pub def isSubmatchWithBounds(rgx: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Bool = region rc {
         match newMatcherWithBounds(rc, rgx, start, end, s) {
-            case Ok(m)  => find(m)
+            case Ok(m)  => find!(m)
             case Err(_) => false
         }
     }
@@ -443,8 +443,8 @@ mod Regex {
     ///
     /// Returns `Nil` if there are no matches or the bounds are invalid.
     ///
-    pub def indicesWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): List[Int32] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def indicesWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): List[Int32] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => match foldSubmatches(Chain.snoc, Chain.empty(), matcherStart, m) {
                case Ok(c)  => Chain.toList(c)
                case Err(_) => Nil
@@ -459,8 +459,8 @@ mod Regex {
     ///
     /// Returns `Nil` if `substr` is the empty string or the bounds are invalid.
     ///
-    pub def submatchesWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): List[String] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def submatchesWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): List[String] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)   => match foldSubmatches(Chain.snoc, Chain.empty(), matcherContent, m) {
                 case Ok(c)  => Chain.toList(c)
                 case Err(_) => Nil
@@ -474,8 +474,8 @@ mod Regex {
     ///
     /// Returns 0 if the bounds are invalid.
     ///
-    pub def countSubmatchesWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Int32 = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def countSubmatchesWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): Int32 = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => match foldSubmatches((acc, _) -> acc + 1, 0, matcherStart, m) {
                 case Ok(n)  => n
                 case Err(_) => 0
@@ -490,8 +490,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` or the bounds are invalid return `None`.
     ///
-    pub def indexOfFirstWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Option[Int32] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def indexOfFirstWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): Option[Int32] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => firstSubmatch(matcherStart, m) |> Result.toOption
             case Err(_) => None
         }
@@ -503,8 +503,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` or the bounds are invalid return `None`.
     ///
-    pub def indexOfLastWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Option[Int32] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def indexOfLastWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): Option[Int32] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => lastSubmatch(matcherStart, m) |> Result.toOption
             case Err(_) => None
         }
@@ -516,8 +516,8 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` or the bounds are invalid return `None`.
     ///
-    pub def getFirstWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Option[String] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def getFirstWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): Option[String] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => firstSubmatch(matcherContent, m) |> Result.toOption
             case Err(_) => None
         }
@@ -529,21 +529,21 @@ mod Regex {
     ///
     /// If the Regex `substr` is not present in `s` or the bounds are invalid return `None`.
     ///
-    pub def getLastWithBounds(substr: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Option[String] = region rc {
-        match newMatcherWithBounds(rc, substr, start, end, s) {
+    pub def getLastWithBounds(substr: {substr = Regex}, start: {start = Int32}, end: {end = Int32}, s: String): Option[String] = region rc {
+        match newMatcherWithBounds(rc, substr#substr, start, end, s) {
             case Ok(m)  => lastSubmatch(matcherContent, m) |> Result.toOption
             case Err(_) => None
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // Internal support for matching using java.util.regex.Matcher           //
+    // Internal support for matching using ####java.util.regex.Matcher       //
     ///////////////////////////////////////////////////////////////////////////
 
 
     ///
     /// Matcher is imperative - it can be seen a a stepper through a stream
-    /// of matches. The matcher is updated with the function find to move to
+    /// of matches. The matcher is updated with the function find! to move to
     /// the next match.
     ///
     enum Matcher[_: Region](JMatcher)
@@ -561,7 +561,7 @@ mod Regex {
     ///
     def newMatcherWithBounds(rc: Region[r], rgx: Regex, start: {start = Int32}, end: {end = Int32}, s: String): Result[String, Matcher[r]] \ r =
         let m = newMatcher(rc, rgx, s);
-        match setBounds(start, end, m) {
+        match setBounds!(start, end, m) {
             case Ok()     => Ok(m)
             case Err(msg) => Err(msg)
         }
@@ -572,7 +572,7 @@ mod Regex {
     ///
     /// The internal state of the matcher is updated.
     ///
-    def find(m: Matcher[r]): Bool \ r =
+    def find!(m: Matcher[r]): Bool \ r =
         let Matcher(m1) = m;
         unchecked_cast ((m1.find(): _ \ IO) as _ \ r)
 
@@ -583,7 +583,7 @@ mod Regex {
     ///
     /// The internal state of the matcher is updated.
     ///
-    def findFrom(pos: Int32, m: Matcher[r]): Bool \ r =
+    def findFrom!(pos: Int32, m: Matcher[r]): Bool \ r =
         Result.tryCatch(_ -> {
             let Matcher(m1) = m;
             unchecked_cast ((m1.find(pos): _ \ IO) as _ \ r)
@@ -599,22 +599,22 @@ mod Regex {
     /// The internal state of the matcher is updated.
     ///
     /// Note - there are no primitive Java functions for right-to-left scanning provided
-    /// by Java's JDK so the performance of `findLast` is disadvantaged compared to `find`.
+    /// by Java's JDK so the performance of `findLast!` is disadvantaged compared to `find!`.
     ///
-    def findLast(m: Matcher[r]): Bool \ r =
+    def findLast!(m: Matcher[r]): Bool \ r =
         def loop(lastPos) = {
-            match find(m) {
+            match find!(m) {
                 case true  => {let pos1 = matcherStart(m); loop(pos1)}
                 case false => lastPos
             }
         };
-        match find(m) {
+        match find!(m) {
             case false  => false
             case true   => {
                 let pos = matcherStart(m);
                 match loop(pos) {
                     case Err(_)          => false
-                    case Ok(startOfLast) => findFrom(startOfLast, m)
+                    case Ok(startOfLast) => findFrom!(startOfLast, m)
                 }
             }
         }
@@ -622,10 +622,10 @@ mod Regex {
     ///
     /// Set the bounds of the matcher's region.
     ///
-    def setBounds(start: {start = Int32}, end: {end = Int32}, m: Matcher[r]): Result[String, Unit] \ r =
+    def setBounds!(start: {start = Int32}, end: {end = Int32}, m: Matcher[r]): Result[String, Unit] \ r =
         Result.tryCatch(_ -> {
             let Matcher(m1) = m;
-            unchecked_cast ((discard m1.$region(start#start, end#end): _ \ IO) as _ \ r)
+            unchecked_cast ((discard m1.region(start#start, end#end): _ \ IO) as _ \ r)
         })
 
 
@@ -676,7 +676,7 @@ mod Regex {
     /// If the query `asks` or no match is found `Err(_)` is returned.
     ///
     def firstSubmatch(asks: MatchQuery[a, r], m: Matcher[r]): Result[String, a] \ r =
-        if (find(m))
+        if (find!(m))
             asks(m)
         else
             Err("No match")
@@ -688,7 +688,7 @@ mod Regex {
     /// If the query `asks` or no match is found `Err(_)` is returned.
     ///
     def lastSubmatch(asks: MatchQuery[a, r], m: Matcher[r]): Result[String, a] \ r =
-        if (findLast(m))
+        if (findLast!(m))
             asks(m)
         else
             Err("No match")
@@ -703,7 +703,7 @@ mod Regex {
     ///
     def foldSubmatches(f: (b, a) -> b \ ef, x: b, asks: MatchQuery[a, r], m: Matcher[r]): Result[String, b] \ { r, ef } =
         def loop(acc) = {
-            match find(m) {
+            match find!(m) {
                 case true  => match asks(m) {
                     case Ok(a)    => loop(f(acc, a))
                     case Err(msg) => Err(msg)

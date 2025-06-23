@@ -22,7 +22,7 @@ eff Clock {
     ///
     /// Returns a measure of time since the epoch in the given time unit `u`.
     ///
-    def currentTime(u: TimeUnit): Int64
+    pub def currentTime(u: TimeUnit): Int64
 
 }
 
@@ -44,20 +44,20 @@ mod Clock {
     /// In other words, re-interprets the `Clock` effect using the `IO` effect.
     ///
     pub def handle(f: a -> b \ ef): a -> b \ (ef - Clock) + IO = x ->
-        run {
+        try {
             f(x)
-        } with handler Clock {
+        } with Clock {
             def currentTime(u, k) = {
                 let time = System.currentTimeMillis();
-                let ms = JTimeUnit.MILLISECONDS;
+                let ns = JTimeUnit.MILLISECONDS;
                 match u {
-                    case TimeUnit.Days          => k(ms.toDays(time))
-                    case TimeUnit.Hours         => k(ms.toHours(time))
-                    case TimeUnit.Microseconds  => k(ms.toMicros(time))
-                    case TimeUnit.Milliseconds  => k(ms.toMillis(time))
-                    case TimeUnit.Minutes       => k(ms.toMinutes(time))
-                    case TimeUnit.Nanoseconds   => k(ms.toNanos(time))
-                    case TimeUnit.Seconds       => k(ms.toSeconds(time))
+                    case TimeUnit.Days          => k(ns.toDays(time))
+                    case TimeUnit.Hours         => k(ns.toHours(time))
+                    case TimeUnit.Microseconds  => k(ns.toMicros(time))
+                    case TimeUnit.Milliseconds  => k(ns.toMillis(time))
+                    case TimeUnit.Minutes       => k(ns.toMinutes(time))
+                    case TimeUnit.Nanoseconds   => k(ns.toNanos(time))
+                    case TimeUnit.Seconds       => k(ns.toSeconds(time))
                 }
             }
         }
@@ -67,6 +67,6 @@ mod Clock {
     ///
     /// In other words, re-interprets the `Clock` effect using the `IO` effect.
     ///
-    pub def runWithIO(f: Unit -> a \ ef): a \ (ef - Clock) + IO = handle(f)()
+    pub def run(f: Unit -> a \ ef): a \ (ef - Clock) + IO = handle(f)()
 
 }

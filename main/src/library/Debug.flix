@@ -17,10 +17,9 @@ mod Debug {
     /// Note: For internal use only. The actual `dbg(exp)` expression is parsed and ultimately rewritten to call this function.
     ///
     @Internal
-    pub def debugWithPrefix(prefix: String, x: a): a = unsafe {
+    pub def debugWithPrefix(prefix: String, x: a): a \ IO =
         System.out.println("${prefix}%{x}");
         x
-    }
 
     ///
     /// Escapes the given string per Flix's escaping rules.
@@ -48,9 +47,9 @@ mod Debug {
             case b: Bool =>  if (b) "true" else "false"
             case c: Char => "\'" + escape("${(c: Char)}") + "\'"
             case y: Float32 =>
-                Float.toString(y) + "f32"
+                unsafe Float.toString(y) + "f32"
             case y: Float64 =>
-                Double.toString(y)
+                unsafe Double.toString(y)
             case y: BigDecimal =>
                 if (unsafe Objects.isNull(y)) {
                     "null"
@@ -58,13 +57,13 @@ mod Debug {
                     unsafe y.toString() + "ff"
                 }
             case y: Int8 =>
-                Byte.toString(y) + "i8"
+                unsafe Byte.toString(y) + "i8"
             case y: Int16 =>
-                Short.toString(y) + "i16"
+                unsafe Short.toString(y) + "i16"
             case y: Int32 =>
-                Integer.toString(y)
+                unsafe Integer.toString(y)
             case y: Int64 =>
-                Long.toString(y) + "i64"
+                unsafe Long.toString(y) + "i64"
             case y: BigInt =>
                 if (unsafe Objects.isNull(y)) {
                     "null"

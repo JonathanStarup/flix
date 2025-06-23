@@ -126,9 +126,9 @@ instance ToJava[Vector[a]] {
 }
 
 
-instance ToFlix[Vector[a]] {
+instance FromJava[Vector[a]] {
     type In = JList
-    pub def toFlix(l: JList): Vector[a] = region rc {
+    pub def fromJava(l: JList): Vector[a] = region rc {
         let iter = unchecked_cast ((l.iterator(): _ \ IO) as _ \ rc);
         iter |> Adaptor.fromIterator(rc, (Proxy.Proxy: Proxy[a])) |> Iterator.toVector
     }
@@ -166,10 +166,10 @@ mod Vector {
     }
 
     ///
-    /// Version of `Array.updateSequence` where sub is a vector rather than an array,
+    /// Version of `Array.updateSequence!` where sub is a vector rather than an array,
     /// so a extra copy of `sub` is avoided.
     ///
-    def arrayUpdateSeqV(i: Int32, sub: Vector[a], arr: Array[a, r]): Unit \ r  =
+    def arrayUpdateSeqV!(i: Int32, sub: Vector[a], arr: Array[a, r]): Unit \ r  =
         let end = Array.length(arr);
         let subLen = length(sub);
         def loop(ri, wi) = {
@@ -321,8 +321,8 @@ mod Vector {
     ///
     pub def append(v1: Vector[a], v2: Vector[a]): Vector[a] = region rc {
         let arr = Array.empty(rc, length(v1) + length(v2));
-        arrayUpdateSeqV(0, v1, arr);
-        arrayUpdateSeqV(length(v1), v2, arr);
+        arrayUpdateSeqV!(0, v1, arr);
+        arrayUpdateSeqV!(length(v1), v2, arr);
         Array.toVector(arr)
     }
 
@@ -526,7 +526,7 @@ mod Vector {
                 k(Applicative.point(arr))
             else {
                 let mx = get(i, v);
-                loop(i+1, karr -> k(putA(mx, i, karr)))
+                loop(i+1, karr -> k(putA!(mx, i, karr)))
             }
         };
         Functor.map(Array.toVector, loop(0, x -> checked_ecast(x)))
@@ -544,7 +544,7 @@ mod Vector {
                 k(Applicative.point(arr))
             else {
                 let x = get(i, v);
-                loop(i+1, karr -> k(putA(f(x), i, karr)))
+                loop(i+1, karr -> k(putA!(f(x), i, karr)))
             }
         };
         Functor.map(Array.toVector, loop(0, x -> checked_ecast(x)))
@@ -553,7 +553,7 @@ mod Vector {
     ///
     /// Helper for `sequence`, `traverse` and `zipWithA`.
     ///
-    def putA(mx: m[a], i: Int32, marr: m[Array[a, r]]): m[Array[a, r]] \ r with Applicative[m] =
+    def putA!(mx: m[a], i: Int32, marr: m[Array[a, r]]): m[Array[a, r]] \ r with Applicative[m] =
         use Functor.{<$>};
         use Applicative.{<*>};
         (((x, arr) -> {Array.put(x, i, arr); arr}) <$> mx) <*> marr
@@ -570,7 +570,7 @@ mod Vector {
             else {
                 let x = get(i, v1);
                 let y = get(i, v2);
-                loop(i+1, karr -> k(putA(f(x, y), i, karr)))
+                loop(i+1, karr -> k(putA!(f(x, y), i, karr)))
             }
         };
         Functor.map(Array.toVector, loop(0, x -> checked_ecast(x)))
@@ -695,13 +695,13 @@ mod Vector {
         let arr = Array.empty(rc, len);
         let f = (i, v) -> {
             if (i == 0) {
-                arrayUpdateSeqV(0, v, arr);
+                arrayUpdateSeqV!(0, v, arr);
                 Ref.put(length(v), pos)
             } else {
                 let ix = Ref.get(pos);
-                arrayUpdateSeqV(ix, sep, arr);
+                arrayUpdateSeqV!(ix, sep, arr);
                 let ix1 = ix + sepLength;
-                arrayUpdateSeqV(ix1, v, arr);
+                arrayUpdateSeqV!(ix1, v, arr);
                 Ref.put(ix1 + length(v), pos)
             }
         };
@@ -944,7 +944,7 @@ mod Vector {
         forEach(v -> {
             let i = Ref.get(pos);
             Ref.put(i + length(v), pos);
-            arrayUpdateSeqV(i, v, arr)
+            arrayUpdateSeqV!(i, v, arr)
         }, vs);
         Array.toVector(arr)
     }
@@ -988,7 +988,7 @@ mod Vector {
     ///
     pub def filter(f: a -> Bool \ ef, v: Vector[a]): Vector[a] \ ef = region rc {
         let m = MutList.empty(rc);
-        forEach(a -> if (f(a)) MutList.push(a, m) else (), v);
+        forEach(a -> if (f(a)) MutList.push!(a, m) else (), v);
         MutList.toVector(m)
     }
 
@@ -1364,7 +1364,7 @@ mod Vector {
     ///
     pub def findIndices(f: a -> Bool \ ef, v: Vector[a]): Vector[Int32] \ ef = region rc {
         let l = MutList.empty(rc);
-        forEachWithIndex((i, x) -> if (f(x)) MutList.push(i, l) else (), v);
+        forEachWithIndex((i, x) -> if (f(x)) MutList.push!(i, l) else (), v);
         MutList.toVector(l)
     }
 
@@ -1460,16 +1460,19 @@ mod Vector {
     /// Returns the concatenation of the string representation
     /// of each element in `v` with `sep` inserted between each element.
     ///
-    pub def join(sep: String, v: Vector[a]): String with ToString[a] = region rc {
-        Vector.iterator(rc, v) |> Iterator.join(sep)
-    }
+    pub def join(sep: String, v: Vector[a]): String with ToString[a] =
+        joinWith(ToString.toString, sep, v)
 
     ///
     /// Returns the concatenation of the string representation
     /// of each element in `v` according to `f` with `sep` inserted between each element.
     ///
     pub def joinWith(f: a -> String \ ef, sep: String, v: Vector[a]): String \ ef = region rc {
-        Vector.iterator(rc, v) |> Iterator.joinWith(f, sep)
+        use StringBuilder.append!;
+        let lastSep = String.length(sep);
+        let sb = StringBuilder.empty(rc);
+        forEach(x -> { append!(f(x), sb); append!(sep, sb) }, v);
+        StringBuilder.toString(sb) |> String.dropRight(lastSep)
     }
 
     ///
@@ -1504,7 +1507,7 @@ mod Vector {
     ///
     pub def sortWith(cmp: (a, a) -> Comparison, v: Vector[a]): Vector[a] = region rc {
         let arr = toArray(rc, v);
-        Array.sortWith(cmp, arr);
+        Array.sortWith!(cmp, arr);
         Array.toVector(arr)
     }
 

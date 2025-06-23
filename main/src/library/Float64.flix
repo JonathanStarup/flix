@@ -109,7 +109,7 @@ mod Float64 {
     /// A successful parse is wrapped with `Some(x)`, a parse failure is indicated by `None`.
     ///
     pub def fromString(s: String): Option[Float64] = try {
-        Some(Double.parseDouble(unsafe s.strip()))
+        Some(unsafe Double.parseDouble(s.strip()))
     } catch {
         case _: NumberFormatException => None
     }
@@ -127,7 +127,7 @@ mod Float64 {
         if (x < Int8.toFloat64(Int8.minValue()) or x > Int8.toFloat64(Int8.maxValue()) or isNan(x) or isInfinite(x))
             None
         else
-            Some(Double.valueOf(x).byteValue())
+            Some(unsafe Double.valueOf(x).byteValue())
 
     ///
     /// Convert `x` to an `Option[Int16]`.
@@ -142,7 +142,7 @@ mod Float64 {
         if (x < Int16.toFloat64(Int16.minValue()) or x > Int16.toFloat64(Int16.maxValue()) or isNan(x) or isInfinite(x))
             None
         else
-            Some(Double.valueOf(x).shortValue())
+            Some(unsafe Double.valueOf(x).shortValue())
 
     ///
     /// Convert `x` to an `Option[Int32]`.
@@ -157,7 +157,7 @@ mod Float64 {
         if (x < Int32.toFloat64(Int32.minValue()) or x > Int32.toFloat64(Int32.maxValue()) or isNan(x) or isInfinite(x))
             None
         else
-            Some(Double.valueOf(x).intValue())
+            Some(unsafe Double.valueOf(x).intValue())
 
     ///
     /// Convert `x` to an `Option[Int64]`.
@@ -175,7 +175,7 @@ mod Float64 {
         if (x < Int64.toFloat64(Int64.minValue()) or x > Int64.toFloat64(Int64.maxValue()) or isNan(x) or isInfinite(x))
             None
         else
-            Some(Double.valueOf(x).longValue())
+            Some(unsafe Double.valueOf(x).longValue())
 
     ///
     /// Convert `x` to an `Option[BigInt]`.
@@ -208,7 +208,7 @@ mod Float64 {
         if (x < Float32.toFloat64(Float32.minValue()) or x > Float32.toFloat64(Float32.maxValue()))
             None
         else
-            Some(Double.valueOf(x).floatValue())
+            Some(unsafe Double.valueOf(x).floatValue())
 
     ///
     /// Convert `x` to an `Option[BigDecimal]`.
@@ -228,91 +228,91 @@ mod Float64 {
     ///
     /// Helper function for the `clamp` conversion functions.
     ///
-    def clamp(min: {min = Float64}, max: {max = Float64}, x: Float64): Float64 =
-        if (x < min#min)
-             min#min
+    def clamp(x: Float64, minimum: Float64, maximum: Float64): Float64 =
+        if (x < minimum)
+             minimum
         else
-            if (x > max#max)
-                max#max
+            if (x > maximum)
+                maximum
             else
                 x
 
     ///
     /// Convert `x` to an `Int8`.
     ///
-    /// Returns `x` clamped within the Int8 range `min` to `max`.
+    /// Returns `x` clamped within the Int8 range `minimum` to `maximum`.
     ///
     /// Warning: it is recommended to test `x` for NaN (not-a-number) before calling this
     /// function. Relying on `nanValue` to convert NaN to a permissable Int8 risks masking it.
     ///
-    pub def clampToInt8(min: {min = Int8}, max: {max = Int8}, nanValue: {nanValue = Int8}, x: Float64): Int8 =
-        let minf64 = Int8.toFloat64(min#min);
-        let maxf64 = Int8.toFloat64(max#max);
+    pub def clampToInt8(x: Float64, minimum: Int8, maximum: Int8, nanValue: Int8): Int8 =
+        let minf64 = Int8.toFloat64(minimum);
+        let maxf64 = Int8.toFloat64(maximum);
         if (isNan(x))
-            nanValue#nanValue
+            nanValue
         else
-            Double.valueOf(clamp(min = minf64, max = maxf64, x)).byteValue()
+            unsafe Double.valueOf(clamp(x, minf64, maxf64)).byteValue()
 
     ///
     /// Convert `x` to an `Int16`.
     ///
-    /// Returns `x` clamped within the Int16 range `min` to `max`.
+    /// Returns `x` clamped within the Int16 range `minimum` to `maximum`.
     ///
     /// Warning: it is recommended to test `x` for NaN (not-a-number) before calling this
     /// function. Relying on `nanValue` to convert NaN to a permissable Int16 risks masking it.
     ///
-    pub def clampToInt16(min: {min = Int16}, max: {max = Int16}, nanValue: {nanValue = Int16}, x: Float64): Int16 =
-        let minf64 = Int16.toFloat64(min#min);
-        let maxf64 = Int16.toFloat64(max#max);
+    pub def clampToInt16(x: Float64, minimum: Int16, maximum: Int16, nanValue: Int16): Int16 =
+        let minf64 = Int16.toFloat64(minimum);
+        let maxf64 = Int16.toFloat64(maximum);
         if (isNan(x))
-            nanValue#nanValue
+            nanValue
         else
-            Double.valueOf(clamp(min = minf64, max = maxf64, x)).shortValue()
+            unsafe Double.valueOf(clamp(x, minf64, maxf64)).shortValue()
 
     ///
     /// Convert `x` to an `Int32`.
     ///
-    /// Returns `x` clamped within the Int32 range `min` to `max`.
+    /// Returns `x` clamped within the Int32 range `minimum` to `maximum`.
     ///
     /// Warning: it is recommended to test `x` for NaN (not-a-number) before calling this
     /// function. Relying on `nanValue` to convert NaN to a permissable Int32 risks masking it.
     ///
-    pub def clampToInt32(min: {min = Int32}, max: {max = Int32}, nanValue: {nanValue = Int32}, x: Float64): Int32 =
-        let minf64 = Int32.toFloat64(min#min);
-        let maxf64 = Int32.toFloat64(max#max);
+    pub def clampToInt32(x: Float64, minimum: Int32, maximum: Int32, nanValue: Int32): Int32 =
+        let minf64 = Int32.toFloat64(minimum);
+        let maxf64 = Int32.toFloat64(maximum);
         if (isNan(x))
-            nanValue#nanValue
+            nanValue
         else
-            Double.valueOf(clamp(min = minf64, max = maxf64, x)).intValue()
+            unsafe Double.valueOf(clamp(x, minf64, maxf64)).intValue()
 
     ///
     /// Convert `x` to an `Int64`.
     ///
-    /// Returns `x` clamped within the Int64 range `min` to `max`.
+    /// Returns `x` clamped within the Int64 range `minimum` to `maximum`.
     ///
     /// Warning: it is recommended to test `x` for NaN (not-a-number) before calling this
     /// function. Relying on `nanValue` to convert NaN to a permissable Int64 risks masking it.
     ///
-    pub def clampToInt64(min: {min = Int64}, max: {max = Int64}, nanValue: {nanValue = Int64}, x: Float64): Int64 =
-        let minf64 = Int64.toFloat64(min#min);
-        let maxf64 = Int64.toFloat64(max#max);
+    pub def clampToInt64(x: Float64, minimum: Int64, maximum: Int64, nanValue: Int64): Int64 =
+        let minf64 = Int64.toFloat64(minimum);
+        let maxf64 = Int64.toFloat64(maximum);
         if (isNan(x))
-            nanValue#nanValue
+            nanValue
         else
-            Double.valueOf(clamp(min = minf64, max = maxf64, x)).longValue()
+            unsafe Double.valueOf(clamp(x, minf64, maxf64)).longValue()
 
     ///
     /// Convert `x` to a `Float32`.
     ///
-    /// Returns `x` clamped within the Float32 range `min` to `max`.
+    /// Returns `x` clamped within the Float32 range `minimum` to `maximum`.
     ///
-    pub def clampToFloat32(min: {min = Float32}, max: {max = Float32}, x: Float64): Float32 =
-        let minf64 = Float32.toFloat64(min#min);
-        let maxf64 = Float32.toFloat64(max#max);
+    pub def clampToFloat32(x: Float64, minimum: Float32, maximum: Float32): Float32 =
+        let minf64 = Float32.toFloat64(minimum);
+        let maxf64 = Float32.toFloat64(maximum);
         if (isNan(x))
             Float32.nan()
         else
-            Double.valueOf(clamp(min = minf64, max = maxf64, x)).floatValue()
+            unsafe Double.valueOf(clamp(x, minf64, maxf64)).floatValue()
 
     ///
     /// Returns the absolute value of `x`.
@@ -359,7 +359,7 @@ mod Float64 {
     /// code you should not need to use `java.lang.Double`.
     ///
     pub def doubleValue(i: Double): Float64 =
-        i.doubleValue()
+        unsafe i.doubleValue()
 
     ///
     /// Convert an Float64 value to its object representation (i.e. java.lang.Double).
@@ -368,6 +368,6 @@ mod Float64 {
     /// code you should not need to use `java.lang.Double`.
     ///
     pub def valueOf(i: Float64): Double =
-        Double.valueOf(i)
+        unsafe Double.valueOf(i)
 
 }

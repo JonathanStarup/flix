@@ -23,7 +23,7 @@
 ///
 /// The key and value types must implement the Eq and Order traits.
 ///
-pub enum MultiMap[k, v] {
+pub enum MultiMap[k, v] with Sendable {
     case MultiMap(Map[k, Set[v]])
 }
 
@@ -125,7 +125,7 @@ mod MultiMap {
     ///
     /// Returns `Some(vs)` if `k => vs` is in `m`.
     ///
-    /// Otherwise returns `Set.empty()`.
+    /// Otherwise returns `Nil`.
     ///
     pub def get(k: k, m: MultiMap[k, v]): Set[v] with Order[k] =
         let MultiMap(t) = m;
@@ -155,9 +155,7 @@ mod MultiMap {
         Map.valuesOf(m1) |> List.map(Set.toList) |> List.flatten
 
     ///
-    /// Updates `m` with `k => Set.union(v, v0)` if `k => v0` is in `m`.
-    ///
-    /// Otherwise, returns `m` with `k => Set.singleton(v)`.
+    /// Updates `m` with `k => v`.
     ///
     pub def insert(k: k, v: v, m: MultiMap[k, v]): MultiMap[k, v] with Order[k], Order[v] =
         let MultiMap(m1) = m;

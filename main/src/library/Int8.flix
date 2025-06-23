@@ -337,7 +337,7 @@ mod Int8 {
     /// A successful parse is wrapped with `Some(x)`, a parse failure is indicated by `None`.
     ///
     pub def fromString(s: String): Option[Int8] = try {
-        Some(Byte.parseByte(unsafe s.strip()))
+        Some(unsafe Byte.parseByte(s.strip()))
     } catch {
         case _: NumberFormatException => None
     }
@@ -348,7 +348,7 @@ mod Int8 {
     /// The numeric value of `x` is preserved exactly.
     ///
     pub def toInt16(x: Int8): Int16 =
-        Byte.valueOf(x).shortValue()
+        unsafe Byte.valueOf(x).shortValue()
 
     ///
     /// Convert `x` to an Int32.
@@ -356,7 +356,7 @@ mod Int8 {
     /// The numeric value of `x` is preserved exactly.
     ///
     pub def toInt32(x: Int8): Int32 =
-        Byte.valueOf(x).intValue()
+        unsafe Byte.valueOf(x).intValue()
 
     ///
     /// Convert `x` to an Int64.
@@ -364,7 +364,7 @@ mod Int8 {
     /// The numeric value of `x` is preserved exactly.
     ///
     pub def toInt64(x: Int8): Int64 =
-        Byte.valueOf(x).longValue()
+        unsafe Byte.valueOf(x).longValue()
 
     ///
     /// Convert `x` to a BigInt.
@@ -380,7 +380,7 @@ mod Int8 {
     /// The numeric value of `x` is preserved exactly.
     ///
     pub def toFloat32(x: Int8): Float32 =
-        Byte.valueOf(x).floatValue()
+        unsafe Byte.valueOf(x).floatValue()
 
     ///
     /// Convert `x` to a Float64.
@@ -388,7 +388,7 @@ mod Int8 {
     /// The numeric value of `x` is preserved exactly.
     ///
     pub def toFloat64(x: Int8): Float64 =
-        Byte.valueOf(x).doubleValue()
+        unsafe Byte.valueOf(x).doubleValue()
 
     ///
     /// Convert `x` to a BigDecimal.
@@ -405,7 +405,7 @@ mod Int8 {
     /// code you should not need to use `Byte`.
     ///
     pub def byteValue(i: Byte): Int8 =
-        i.byteValue()
+        unsafe i.byteValue()
 
     ///
     /// Convert an Int8 value to its object representation (i.e. Byte).
@@ -414,6 +414,6 @@ mod Int8 {
     /// code you should not need to use `Byte`.
     ///
     pub def valueOf(i: Int8): Byte =
-        Byte.valueOf(i)
+        unsafe Byte.valueOf(i)
 
 }

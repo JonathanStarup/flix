@@ -24,6 +24,9 @@ mod Concurrent {
 }
 
 mod Concurrent.CyclicBarrier {
+    // TODO NS-REFACTOR can remove these
+    use Concurrent.CyclicBarrier
+    use Concurrent.CyclicBarrier.CyclicBarrier
     import java.util.concurrent.{CyclicBarrier => JCyclicBarrier}
 
   ///

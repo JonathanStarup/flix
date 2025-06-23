@@ -24,60 +24,60 @@ import java.lang.Short
 import java.math.BigInteger
 
 ///
-/// A trait for marshaling values to Flix objects.
+/// A trait for marshaling values from Java objects.
 ///
-pub trait ToFlix[t: Type] {
+pub trait FromJava[t: Type] {
     type In[t]: Type
     type Aef[t]: Eff = {}
-    pub def toFlix(t: ToFlix.In[t]): t \ ToFlix.Aef[t]
+    pub def fromJava(t: FromJava.In[t]): t \ FromJava.Aef[t]
 }
 
-instance ToFlix[Int8] {
+instance FromJava[Int8] {
     type In = Byte
-    pub def toFlix(i: Byte): Int8 = Int8.byteValue(i)
+    pub def fromJava(i: Byte): Int8 = Int8.byteValue(i)
 }
 
-instance ToFlix[Int16] {
+instance FromJava[Int16] {
     type In = Short
-    pub def toFlix(i: Short): Int16 = Int16.shortValue(i)
+    pub def fromJava(i: Short): Int16 = Int16.shortValue(i)
 }
 
-instance ToFlix[Int32] {
+instance FromJava[Int32] {
     type In = Integer
-    pub def toFlix(i: Integer): Int32 = Int32.intValue(i)
+    pub def fromJava(i: Integer): Int32 = Int32.intValue(i)
 }
 
-instance ToFlix[Int64] {
+instance FromJava[Int64] {
     type In = Long
-    pub def toFlix(i: Long): Int64 = Int64.longValue(i)
+    pub def fromJava(i: Long): Int64 = Int64.longValue(i)
 }
 
-instance ToFlix[Float32] {
+instance FromJava[Float32] {
     type In = Float
-    pub def toFlix(d: Float): Float32 = Float32.floatValue(d)
+    pub def fromJava(d: Float): Float32 = Float32.floatValue(d)
 }
 
-instance ToFlix[Float64] {
+instance FromJava[Float64] {
     type In = Double
-    pub def toFlix(d: Double): Float64 = Float64.doubleValue(d)
+    pub def fromJava(d: Double): Float64 = Float64.doubleValue(d)
 }
 
-instance ToFlix[BigInt] {
+instance FromJava[BigInt] {
     type In = BigInteger
-    pub def toFlix(i: BigInteger): BigInt = i
+    pub def fromJava(i: BigInteger): BigInt = i
 }
 
-instance ToFlix[BigDecimal] {
+instance FromJava[BigDecimal] {
     type In = BigDecimal
-    pub def toFlix(d: BigDecimal): BigDecimal = d
+    pub def fromJava(d: BigDecimal): BigDecimal = d
 }
 
-instance ToFlix[Char] {
+instance FromJava[Char] {
     type In = Character
-    pub def toFlix(c: Character): Char = Char.charValue(c)
+    pub def fromJava(c: Character): Char = Char.charValue(c)
 }
 
-instance ToFlix[String] {
+instance FromJava[String] {
     type In = String
-    pub def toFlix(s: String): String = s
+    pub def fromJava(s: String): String = s
 }

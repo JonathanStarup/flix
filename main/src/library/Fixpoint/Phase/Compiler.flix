@@ -38,7 +38,7 @@ mod Fixpoint.Phase.Compiler {
     /// A rule belongs to the same stratum as its head predicate.
     ///
     @Internal
-    pub def compile(d: Datalog, strat: Map[PredSym, Int32]): RamStmt = match d {
+    pub def compile(d: Datalog[v], strat: Map[PredSym, Int32]): RamStmt[v] = match d {
         case Datalog(facts, rules) => region rc {
             let stmts = MutList.empty(rc);
             Vector.forEach(compileRule(stmts), facts);
@@ -71,7 +71,7 @@ mod Fixpoint.Phase.Compiler {
     /// Note that Eval-Rule is the code emitted by `compileRule`
     /// and Eval-Rule-Incr is the code emitted by `compileRuleIncr`.
     ///
-    def compileStratum(stmts: MutList[RamStmt, r], stratum: List[Constraint]): Unit \ r = region rc {
+    def compileStratum(stmts: MutList[RamStmt[v], r], stratum: List[Constraint[v]]): Unit \ r = region rc {
         let idb = List.foldRight(match Constraint(HeadAtom(pred, den, terms), _) -> {
             let arity = Vector.length(terms);
             Map.insert(pred, (arity, den))
@@ -82,24 +82,24 @@ mod Fixpoint.Phase.Compiler {
             let full = RamSym.Full(predSym, arity, den);
             let delta = RamSym.Delta(predSym, arity, den);
             let mergeDelta = RamStmt.Merge(full, delta);
-            MutList.push(mergeDelta, stmts)
+            MutList.push!(mergeDelta, stmts)
         }, idb);
         Map.forEach(predSym -> match (arity, den) -> {
             let purge = RamStmt.Purge(RamSym.New(predSym, arity, den));
-            MutList.push(purge, loopBody)
+            MutList.push!(purge, loopBody)
         }, idb);
         List.forEach(compileRuleIncr(loopBody), stratum);
         Map.forEach(predSym -> match (arity, den) -> {
             let newr = RamSym.New(predSym, arity, den);
             let full = RamSym.Full(predSym, arity, den);
             let mergeNew = RamStmt.Merge(newr, full);
-            MutList.push(mergeNew, loopBody)
+            MutList.push!(mergeNew, loopBody)
         }, idb);
         Map.forEach(predSym -> match (arity, den) -> {
             let delta = RamSym.Delta(predSym, arity, den);
             let newr = RamSym.New(predSym, arity, den);
             let assign = RamStmt.Assign(delta, newr);
-            MutList.push(assign, loopBody)
+            MutList.push!(assign, loopBody)
         }, idb);
         let loopTest =
             Map.mapWithKey(predSym -> match (arity, den) -> {
@@ -109,7 +109,7 @@ mod Fixpoint.Phase.Compiler {
             List.toVector;
         let untilBody = RamStmt.Seq(MutList.toVector(loopBody));
         let fixpoint = RamStmt.Until(loopTest, untilBody);
-        MutList.push(fixpoint, stmts)
+        MutList.push!(fixpoint, stmts)
     }
 
     ///
@@ -126,7 +126,7 @@ mod Fixpoint.Phase.Compiler {
     ///         end
     ///     end
     ///
-    def compileRule(stmts: MutList[RamStmt, r], rule: Constraint): Unit \ r = match rule {
+    def compileRule(stmts: MutList[RamStmt[v], r], rule: Constraint[v]): Unit \ r = match rule {
         case Constraint(HeadAtom(headSym, headDen, headTerms), body) =>
             let augBody = augmentBody(body);
             let env = unifyVars(augBody);
@@ -148,10 +148,10 @@ mod Fixpoint.Phase.Compiler {
                 RamStmt.Insert;
             if (Fixpoint.Options.enableDebugging()) {
                 let comment = RamStmt.Comment(ToString.toString(rule));
-                MutList.push(comment, stmts);
-                MutList.push(insert, stmts)
+                MutList.push!(comment, stmts);
+                MutList.push!(insert, stmts)
             } else {
-                MutList.push(insert, stmts)
+                MutList.push!(insert, stmts)
             }
     }
 
@@ -181,7 +181,7 @@ mod Fixpoint.Phase.Compiler {
     /// Note that there are two join loops, because there are two positive atoms.
     /// Also note how in the first loop, `B` is the focused atom and `C` is focused in the second loop.
     ///
-    def compileRuleIncr(stmts: MutList[RamStmt, r], rule: Constraint): Unit \ r = match rule {
+    def compileRuleIncr(stmts: MutList[RamStmt[v], r], rule: Constraint[v]): Unit \ r = match rule {
         case Constraint(HeadAtom(headSym, headDen, headTerms), body) =>
             let augBody = augmentBody(body);
             let env = unifyVars(augBody);
@@ -207,7 +207,7 @@ mod Fixpoint.Phase.Compiler {
                         case _ => acc
                     }, loopBody, augBody) |>
                     RamStmt.Insert;
-                MutList.push(insert, stmts)
+                MutList.push!(insert, stmts)
             };
 
             let positiveAtoms = Vector.filter(match (atom, _) -> match atom {
@@ -216,7 +216,7 @@ mod Fixpoint.Phase.Compiler {
             }, augBody);
             if (Fixpoint.Options.enableDebugging()) {
                 let comment = RamStmt.Comment(ToString.toString(rule));
-                MutList.push(comment, stmts);
+                MutList.push!(comment, stmts);
                 Vector.forEach(match (_, rowVar) -> compile(rowVar), positiveAtoms)
             } else {
                 Vector.forEach(match (_, rowVar) -> compile(rowVar), positiveAtoms)
@@ -226,7 +226,7 @@ mod Fixpoint.Phase.Compiler {
     ///
     /// Substitute Datalog head term `term` for a RAM term according to the given substitution `env`.
     ///
-    def compileHeadTerm(env: Map[VarSym, RamTerm], term: HeadTerm): RamTerm = match term {
+    def compileHeadTerm(env: Map[VarSym, RamTerm[v]], term: HeadTerm[v]): RamTerm[v] = match term {
         case HeadTerm.Var(var) => unwrap(Map.get(var, env))
         case HeadTerm.Lit(v) => RamTerm.Lit(v)
         case HeadTerm.App0(f) => RamTerm.App0(f)
@@ -263,7 +263,7 @@ mod Fixpoint.Phase.Compiler {
     ///
     /// Note that row variables not unique across rules.
     ///
-    def augmentBody(body: Vector[BodyPredicate]): Vector[(BodyPredicate, RowVar)] =
+    def augmentBody(body: Vector[BodyPredicate[v]]): Vector[(BodyPredicate[v], RowVar)] =
         Vector.mapWithIndex(i -> atom -> match atom {
             case BodyAtom(predSym, _, Polarity.Positive, _, _) => (atom, RowVar.Named("${predSym}$${i}"))
             case Functional(_, _, _)                                 => (atom, RowVar.Named("l$${i}"))
@@ -279,7 +279,7 @@ mod Fixpoint.Phase.Compiler {
     /// `x` is mapped to B$1[0] because `x` occurs positively in the second atom.
     /// `s` is mapped to the glb of all its positive occurences because it is latticenal.
     ///
-    def unifyVars(body: Vector[(BodyPredicate, RowVar)]): Map[VarSym, RamTerm] =
+    def unifyVars(body: Vector[(BodyPredicate[v], RowVar)]): Map[VarSym, RamTerm[v]] =
         Vector.foldLeft(acc -> match (atom, rowVar) -> match atom {
             case BodyAtom(_, denotation, Polarity.Positive, _, terms) =>
                 Vector.mapWithIndex(i -> term -> (term, i), terms) |>
@@ -324,7 +324,7 @@ mod Fixpoint.Phase.Compiler {
     /// (2) comes from the negative atom `not A(x)`.
     /// (3) is a function call that computes the expression `x > 0`.
     ///
-    def compileBody(env: Map[VarSym, RamTerm], body: Vector[(BodyPredicate, RowVar)]): Vector[BoolExp] =
+    def compileBody(env: Map[VarSym, RamTerm[v]], body: Vector[(BodyPredicate[v], RowVar)]): Vector[BoolExp[v]] =
         Vector.flatMap(match (atom, rowVar) ->
             let compileBodyTerm = j -> term -> match term {
                 case BodyTerm.Wild      => RamTerm.RowLoad(rowVar, j)

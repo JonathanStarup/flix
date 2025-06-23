@@ -341,7 +341,7 @@ mod Int64 {
     /// A successful parse is wrapped with `Some(x)`, a parse failure is indicated by `None`.
     ///
     pub def fromString(s: String): Option[Int64] = try {
-        Some(Long.parseLong(unsafe s.strip()))
+        Some(unsafe Long.parseLong(s.strip()))
     } catch {
         case _: NumberFormatException => None
     }
@@ -352,7 +352,7 @@ mod Int64 {
     /// A successful parse is wrapped with `Ok(x)`, a parse failure is indicated by `Err(_)`.
     ///
     pub def parse(radix: Int32, s: String): Result[String, Int64] = try {
-        Ok(Long.parseLong(unsafe s.strip(), radix))
+        Ok(unsafe Long.parseLong(s.strip(), radix))
     } catch {
         case _: NumberFormatException => Err("Int64.parse")
     }
@@ -369,7 +369,7 @@ mod Int64 {
         if (x < Int8.toInt64(Int8.minValue()) or x > Int8.toInt64(Int8.maxValue()))
             None
         else
-            Some(Long.valueOf(x).byteValue())
+            Some(unsafe Long.valueOf(x).byteValue())
 
     ///
     /// Convert `x` to an `Option[Int16]`.
@@ -383,7 +383,7 @@ mod Int64 {
         if (x < Int16.toInt64(Int16.minValue()) or x > Int16.toInt64(Int16.maxValue()))
             None
         else
-            Some(Long.valueOf(x).shortValue())
+            Some(unsafe Long.valueOf(x).shortValue())
 
     ///
     /// Convert `x` to an `Option[Int32]`.
@@ -397,7 +397,7 @@ mod Int64 {
         if (x < Int32.toInt64(Int32.minValue()) or x > Int32.toInt64(Int32.maxValue()))
             None
         else
-            Some(Long.valueOf(x).intValue())
+            Some(unsafe Long.valueOf(x).intValue())
     ///
     /// Convert `x` to a BigInt.
     ///
@@ -412,7 +412,7 @@ mod Int64 {
     /// Warning: The numeric value of `x` may lose precision.
     ///
     pub def toFloat32(x: Int64): Float32 =
-        Long.valueOf(x).floatValue()
+        unsafe Long.valueOf(x).floatValue()
 
     ///
     /// Convert `x` to a Float64.
@@ -420,7 +420,7 @@ mod Int64 {
     /// Warning: The numeric value of `x` may lose precision.
     ///
     pub def toFloat64(x: Int64): Float64 =
-        Long.valueOf(x).doubleValue()
+        unsafe Long.valueOf(x).doubleValue()
 
     ///
     /// Convert `x` to a BigDecimal.
@@ -450,7 +450,7 @@ mod Int64 {
     pub def clampToInt8(min: {min = Int8}, max: {max = Int8}, x: Int64): Int8 =
         let mini64 = Int8.toInt64(min#min);
         let maxi64 = Int8.toInt64(max#max);
-        Long.valueOf(clamp(min = mini64, max = maxi64, x)).byteValue()
+        unsafe Long.valueOf(clamp(min = mini64, max = maxi64, x)).byteValue()
 
     ///
     /// Convert `x` to an `Int16`.
@@ -460,7 +460,7 @@ mod Int64 {
     pub def clampToInt16(min: {min = Int16}, max: {max = Int16}, x: Int64): Int16 =
         let mini64 = Int16.toInt64(min#min);
         let maxi64 = Int16.toInt64(max#max);
-        Long.valueOf(clamp(min = mini64, max = maxi64, x)).shortValue()
+        unsafe Long.valueOf(clamp(min = mini64, max = maxi64, x)).shortValue()
 
 
     ///
@@ -471,7 +471,7 @@ mod Int64 {
     pub def clampToInt32(min: {min = Int32}, max: {max = Int32}, x: Int64): Int32 =
         let mini64 = Int32.toInt64(min#min);
         let maxi64 = Int32.toInt64(max#max);
-        Long.valueOf(clamp(min = mini64, max = maxi64, x)).intValue()
+        unsafe Long.valueOf(clamp(min = mini64, max = maxi64, x)).intValue()
 
     ///
     /// Get the primitive Int64 value from its object representation (i.e. Long).
@@ -480,7 +480,7 @@ mod Int64 {
     /// code you should not need to use `Long`.
     ///
     pub def longValue(i: Long): Int64 =
-        i.longValue()
+        unsafe i.longValue()
 
     ///
     /// Convert an Int64 value to its object representation (i.e. Long).
@@ -489,6 +489,6 @@ mod Int64 {
     /// code you should not need to use `Long`.
     ///
     pub def valueOf(i: Int64): Long =
-        Long.valueOf(i)
+        unsafe Long.valueOf(i)
 
 }

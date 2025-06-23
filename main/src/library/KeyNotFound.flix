@@ -21,7 +21,7 @@
 eff KeyNotFound {
 
     /// Stops execution with an error message.
-    def keyNotFound(msg: String): Void
+    pub def keyNotFound(msg: String): Void
 
 }
 
@@ -30,7 +30,7 @@ mod KeyNotFound {
     /// Turns the `KeyNotFound` effect into `Err(msg)`.
     @Experimental
     pub def asRes(f: a -> b \ ef): (a -> Result[String, b] \ ef - KeyNotFound) = {
-        x -> run Ok(f(x)) with handler KeyNotFound {
+        x -> try Ok(f(x)) with KeyNotFound {
             def keyNotFound(msg, _) = Err(msg)
         }
     }

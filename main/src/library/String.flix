@@ -192,7 +192,7 @@ mod String {
                 StringBuilder.toString(sb)
             else {
                 let c = f(i);
-                StringBuilder.append(c, sb);
+                StringBuilder.append!(c, sb);
                 loop(i + 1)
             }
         };
@@ -204,7 +204,7 @@ mod String {
     ///
     pub def flatten(xs: List[String]): String = region rc {
         let sb = StringBuilder.empty(rc);
-        List.forEach(x -> StringBuilder.appendString(x, sb), xs);
+        List.forEach(x -> StringBuilder.appendString!(x, sb), xs);
         StringBuilder.toString(sb)
     }
 
@@ -215,7 +215,7 @@ mod String {
     pub def intercalate(sep: String, xs: List[String]): String = region rc {
         let sb = StringBuilder.empty(rc);
         let arr = List.toArray(rc, xs);
-        StringBuilder.intercalate(sep, arr, sb);
+        StringBuilder.intercalate!(sep, arr, sb);
         StringBuilder.toString(sb)
     }
 
@@ -227,8 +227,8 @@ mod String {
         case Nil     => ""
         case x :: rs => region rc {
             let sb = StringBuilder.empty(rc);
-            StringBuilder.appendString(x, sb);
-            let appendStep = s -> { StringBuilder.append(sep, sb); StringBuilder.appendString(s, sb) };
+            StringBuilder.appendString!(x, sb);
+            let appendStep = s -> { StringBuilder.append!(sep, sb); StringBuilder.appendString!(s, sb) };
             List.forEach(appendStep, rs);
             StringBuilder.toString(sb)
         }
@@ -421,7 +421,7 @@ mod String {
         let step = ix ->
             match indexOfLeftWithOffset({substr = substr#substr}, {offset = ix}, s) {
                 case None => None
-                case Some(ix2) => Some((ix2, ix2 + sublen))
+                case Some(ix2) => Some(ix2, ix2 + sublen)
             };
         List.unfold(step, 0)
 
@@ -632,8 +632,8 @@ mod String {
             let a1 = f(a);
             match a1 {
                 case None         => StringBuilder.toString(sb)
-                case Some((c, st1)) => {
-                    StringBuilder.append(c, sb);
+                case Some(c, st1) => {
+                    StringBuilder.append!(c, sb);
                     loop(st1)
                 }
             }
@@ -655,7 +655,7 @@ mod String {
             match f() {
                 case None    => StringBuilder.toString(sb)
                 case Some(c) => {
-                    StringBuilder.append(c, sb);
+                    StringBuilder.append!(c, sb);
                     loop()
                 }
             }
@@ -674,8 +674,8 @@ mod String {
             let a1 = f(a);
             match a1 {
                 case None         => StringBuilder.toString(sb)
-                case Some(((s, st1))) => {
-                    StringBuilder.appendString(s, sb);
+                case Some(s, st1) => {
+                    StringBuilder.appendString!(s, sb);
                     loop(st1)
                 }
             }
@@ -697,7 +697,7 @@ mod String {
             match f() {
                 case None    => StringBuilder.toString(sb)
                 case Some(s) => {
-                    StringBuilder.appendString(s, sb);
+                    StringBuilder.appendString!(s, sb);
                     loop()
                 }
             }
@@ -738,18 +738,18 @@ mod String {
     ///
     /// Returns `true` if `s` is empty.
     ///
-    pub def isWhitespace(s: String): Bool =
-        forAll(Char.isWhitespace, s)
+    pub def isWhiteSpace(s: String): Bool =
+        forAll(Char.isWhiteSpace, s)
 
     ///
     /// Returns string `s` with all leading space characters removed.
     ///
-    pub def trimLeft(s: String): String = dropWhileLeft(Char.isWhitespace, s)
+    pub def trimLeft(s: String): String = dropWhileLeft(Char.isWhiteSpace, s)
 
     ///
     /// Returns string `s` with all trailing space characters removed.
     ///
-    pub def trimRight(s: String): String = dropWhileRight(Char.isWhitespace, s)
+    pub def trimRight(s: String): String = dropWhileRight(Char.isWhiteSpace, s)
 
     ///
     /// Returns a string with the string `s` repeated `n` times.
@@ -799,9 +799,9 @@ mod String {
         let postfix = repeat(ceil, Char.toString(c));
 
         let sb = StringBuilder.empty(rc);
-        StringBuilder.appendString(prefix, sb);
-        StringBuilder.appendString(s, sb);
-        StringBuilder.appendString(postfix, sb);
+        StringBuilder.appendString!(prefix, sb);
+        StringBuilder.appendString!(s, sb);
+        StringBuilder.appendString!(postfix, sb);
         StringBuilder.toString(sb)
     }
 
@@ -877,8 +877,8 @@ mod String {
         let sb = StringBuilder.empty(rc);
         let prefix = repeat(n, " ");
         let step = x -> {
-            StringBuilder.appendString(prefix, sb);
-            StringBuilder.appendLine(x, sb)
+            StringBuilder.appendString!(prefix, sb);
+            StringBuilder.appendLine!(x, sb)
         };
         List.forEach(step, lines(s));
         StringBuilder.toString(sb)
@@ -909,14 +909,14 @@ mod String {
         def loop(s1, ix) = {
             if (ix >= limit)
                 sliceRight(start = ix, s1)
-            else if (not Char.isWhitespace(charAt(ix, s1)))
+            else if (not Char.isWhiteSpace(charAt(ix, s1)))
                 sliceRight(start = ix, s1)
             else
                 loop(s1, ix + 1)
         };
         let step = s1 -> {
             let line = loop(s1, 0);
-            StringBuilder.appendLine(line, sb)
+            StringBuilder.appendLine!(line, sb)
         };
         List.forEach(step, lines(s));
         StringBuilder.toString(sb)
@@ -940,7 +940,7 @@ mod String {
     ///
     pub def unlines(a: List[String]): String = region rc {
         let sb = StringBuilder.empty(rc);
-        List.forEach(x -> StringBuilder.appendLine(x, sb), a);
+        List.forEach(x -> StringBuilder.appendLine!(x, sb), a);
         StringBuilder.toString(sb)
     }
 
@@ -961,8 +961,8 @@ mod String {
         case Nil     => ""
         case x :: xs => region rc {
             let sb = StringBuilder.empty(rc);
-            StringBuilder.appendString(x, sb);
-            let f = s -> { StringBuilder.append(' ', sb); StringBuilder.appendString(s, sb) };
+            StringBuilder.appendString!(x, sb);
+            let f = s -> { StringBuilder.append!(' ', sb); StringBuilder.appendString!(s, sb) };
             List.forEach(f, xs);
             StringBuilder.toString(sb)
         }
@@ -1141,7 +1141,7 @@ mod String {
     ///
     pub def zip(a: String, b: String): List[(Char, Char)] =
         let len = Int32.min(length(a), length(b));
-        List.unfold(i -> if (i >= len) None else Some(((charAt(i, a), charAt(i, b)), i + 1)), 0)
+        List.unfold(i -> if (i >= len) None else Some((charAt(i, a), charAt(i, b)), i + 1), 0)
 
     ///
     /// Returns a string where the element at index `i` is `f(x, y)` where
@@ -1168,11 +1168,11 @@ mod String {
                 match indexOfLeftWithOffset({substr = substr#substr}, {offset = ix}, s) {
                     case None => {
                         let s1 = sliceRight(start = ix, s);
-                        Some((s1, maxlen + 1))
+                        Some(s1, maxlen + 1)
                     }
                     case Some(ix2) => {
                         let s1 = slice(start = ix, end = ix2, s);
-                        Some((s1, ix2 + sublen))
+                        Some(s1, ix2 + sublen)
                     }
                 }
             };
@@ -1224,8 +1224,8 @@ mod String {
         let len = length(s);
         let step = pos -> match pos {
             case i if i >= len        => None
-            case i if i + size >= len => Some((sliceRight(start = i, s), len))
-            case i                    => Some((slice(start = i, end = i + size, s), i + size))
+            case i if i + size >= len => Some(sliceRight(start = i, s), len)
+            case i                    => Some(slice(start = i, end = i + size, s), i + size)
         };
         List.unfold(step, 0)
 
@@ -1348,7 +1348,7 @@ mod String {
         else {
             // Find the last occurrence of non-whitespace followed by whitespace
             // This is the end of the first line
-            let endOpt = Regex.indexOfLastWithBounds(regex"(?<!\\s)\\s", {start = 0}, {end = w}, s);
+            let endOpt = Regex.indexOfLastWithBounds({substr = regex"(?<!\\s)\\s"}, {start = 0}, {end = w}, s);
             let end = match endOpt {
                 case Some(end) => end
                 case None => w
