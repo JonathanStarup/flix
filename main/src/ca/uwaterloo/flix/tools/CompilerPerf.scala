@@ -18,7 +18,7 @@ package ca.uwaterloo.flix.tools
 import ca.uwaterloo.flix.api.{Flix, PhaseTime}
 import ca.uwaterloo.flix.language.ast.shared.SecurityContext
 import ca.uwaterloo.flix.language.phase.unification.EffUnification3
-import ca.uwaterloo.flix.util.StatUtils.{average, median}
+import ca.uwaterloo.flix.util.StatUtils.{minimum, average, median}
 import ca.uwaterloo.flix.util.{FileOps, LocalResource, Options, StatUtils}
 import org.json4s.JValue
 import org.json4s.JsonDSL.*
@@ -247,9 +247,7 @@ object CompilerPerf {
     val mdn = median(throughputs.map(_.toLong)).toInt
 
     // Best observed throughput.
-    val maxObservedThroughput = throughput(lines,
-      Math.min(baseline.times.min,
-        Math.min(baselineWithPar.times.min, baselineWithParInc.times.min)))
+    val maxObservedThroughput = throughput(lines, minimum(baseline.times ::: baselineWithPar.times ::: baselineWithParInc.times))
 
     // Timestamp (in seconds) when the experiment was run.
     val timestamp = System.currentTimeMillis() / 1000
@@ -393,7 +391,8 @@ object CompilerPerf {
     */
   private def perfBaseLine(N: Int, o: Options): IndexedSeq[Run] = {
     // Note: The Flix object is created _for every iteration._
-    (0 until N).map { _ =>
+    (0 until N).map { i =>
+      println(s"Base Iteration ${(i+1).toString.padTo(3, ' ')} / $N")
       val flix = new Flix()
       flix.setOptions(o.copy(threads = MinThreads, incremental = false))
 
@@ -407,7 +406,8 @@ object CompilerPerf {
     */
   private def perfBaseLineWithPar(N: Int, o: Options): IndexedSeq[Run] = {
     // Note: The Flix object is created _for every iteration._
-    (0 until N).map { _ =>
+    (0 until N).map { i =>
+      println(s"Parallel Iteration ${(i+ 1).toString.padTo(3, ' ')} / $N")
       val flix = new Flix()
       flix.setOptions(o.copy(threads = MaxThreads, incremental = false))
 
@@ -431,7 +431,8 @@ object CompilerPerf {
     runSingle(flix)
 
     // And then we perform N incremental compilations with no changes to the input.
-    (0 until N).map { _ =>
+    (0 until N).map { i =>
+      println(s"Incremental Iteration ${(i+ 1).toString.padTo(3, ' ')} / $N")
       runSingle(flix)
     }
   }
@@ -470,7 +471,7 @@ object CompilerPerf {
     */
   private def aggregate(l: IndexedSeq[Run]): Runs = {
     if (l.isEmpty) {
-      return Runs(0, List(0), Nil)
+      return Runs(0, Nil, Nil)
     }
 
     val lines = l.head.lines
@@ -487,7 +488,10 @@ object CompilerPerf {
   /**
     * Returns the throughput per second.
     */
-  private def throughput(lines: Long, time: Long): Int = ((1_000_000_000L * lines).toDouble / time.toDouble).toInt
+  private def throughput(lines: Long, time: Long): Int = {
+    if (time == 0L) -1
+    else ((1_000_000_000L * lines).toDouble / time.toDouble).toInt
+  }
 
   /**
     * Returns the given time `l` in milliseconds.
