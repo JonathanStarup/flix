@@ -41,7 +41,7 @@ object EffUnification3 {
   /**
     * Controls whether to enable solve-and-retry for subeffecting.
     */
-  var EnableSmartSubeffecting: Boolean = true
+  var EnableSmartSubeffecting: Boolean = false
 
   /**
     * Computes an MGU for **ALL* equations in `eqns0`.
