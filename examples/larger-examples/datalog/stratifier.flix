@@ -21,7 +21,7 @@ mod Stratifier {
         flatMap(convertConstraint, c)
 
     def convertConstraint(c: Constraint): PrecedenceGraph =
-        let Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(a0)), b) = c;
+        let Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(a0)), b)) = c;
         let unfoldBodyAtom = ba -> match ba {
             case BodyAtom.Positive(Atom.Atom(ps)) => (true, ps),
             case BodyAtom.Negative(Atom.Atom(ps)) => (false, ps)
@@ -43,7 +43,7 @@ mod Stratifier {
                 NegativeDependencyEdge(ph, pb),
                 Stratum(pb; pbs),
                 Stratum(ph; phs),
-                if pbs < numberOfPredicates.
+                if (pbs < numberOfPredicates).
                 // allow one level of strata above the bound for a stratification check later
         };
         let solution = solve facts, rules;
@@ -60,9 +60,9 @@ mod Stratifier {
         // B :- D
         // C :- not D
         let p = Program.Program(
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))) :: Nil) ::
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil) ::
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))) :: Nil)) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil)) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil)) ::
             Nil
         );
         let result = ullman(p, 4);
@@ -80,10 +80,10 @@ mod Stratifier {
         // C :- not D
         // D :- A
         let p = Program.Program(
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))) :: Nil) ::
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil) ::
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil) ::
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))) :: Nil) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))) :: Nil)) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))), BodyAtom.Positive(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil)) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("C"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))) :: Nil)) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("D"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))) :: Nil)) ::
             Nil
         );
         let result = ullman(p, 4);
@@ -97,7 +97,7 @@ mod Stratifier {
         println("example03");
         // A :- not B.
         let p = Program.Program(
-            Constraint.Constraint(HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: Nil) ::
+            Constraint.Constraint((HeadAtom.HeadAtom(Atom.Atom(PredicateSymbol.PredicateSymbol("A"))), BodyAtom.Negative(Atom.Atom(PredicateSymbol.PredicateSymbol("B"))) :: Nil)) ::
             Nil
         );
         let result = ullman(p, 2);

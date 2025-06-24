@@ -189,105 +189,29 @@ mod TestRedBlackTree {
     ///
     def toTree(xs: List[Int32]): RedBlackTree[Int32, Unit]
         = List.foldLeft((acc, x) -> RedBlackTree.insert(x, (), acc), RedBlackTree.empty(), xs)
+
     ///
     /// Returns a tree with `n` nodes `x -> ()` where `x` is a random integer.
     ///
-    def random(n: Int32): RedBlackTree[Int32, Unit] \ {NonDet, IO} = {
+    def random(n: Int32): RedBlackTree[Int32, Unit] \ IO + NonDet = {
         let rnd = new Random();
         List.foldLeft((acc, x) -> RedBlackTree.insert(x, (), acc), RedBlackTree.empty(),
             List.map(_ -> rnd.nextInt(), List.range(0, n)))
     }
 
-    /////////////////////////////////////////////////////////////////////////////
-    // insert                                                                  //
-    /////////////////////////////////////////////////////////////////////////////
-
-    @test
-    def insert01(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.insert(0, 1);
-        RedBlackTree.get(0, tree) == Some(1) and
-            RedBlackTree.get(1, tree) == None
-
-    @test
-    def insert02(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.insert(0, 1) |>
-            RedBlackTree.insert(1, 2);
-        RedBlackTree.get(0, tree) == Some(1) and
-            RedBlackTree.get(1, tree) == Some(2) and
-            RedBlackTree.get(2, tree) == None
-
-    @test
-    def insert03(): Bool =
-        let inserts = Vector#{(0, 1), (3, 4), (4, 5), (1, 2), (8, 9), (6, 7), (2, 3), (10, 11), (9, 10)};
-        let tree = inserts |> Vector.foldRight(match (k, v) -> RedBlackTree.insert(k, v), RedBlackTree.empty());
-        inserts |> Vector.forAll(match (k, v) -> RedBlackTree.get(k, tree) == Some(v))
 
     /////////////////////////////////////////////////////////////////////////////
-    // insertWith                                                              //
+    // Parallel Helper functions                                               //
     /////////////////////////////////////////////////////////////////////////////
 
-    @test
-    def insertWith01(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.insertWith(_k -> _v -> _v1 -> -1, 0, 1);
-        RedBlackTree.get(0, tree) == Some(1) and
-            RedBlackTree.get(1, tree) == None
+    ///
+    /// Returns the number of threads to use for parallel evaluation.
+    ///
+    def threads(): Int32 =
+        // Note: We use a multiple of the number of physical cores for better performance.
+        let multiplier = 4;
+        multiplier * Environment.getVirtualProcessors()
 
-    @test
-    def insertWith02(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.insert(1, 10) |>
-            RedBlackTree.insertWith(k -> v -> v1 -> k + v + v1, 1, 100);
-        RedBlackTree.get(1, tree) == Some(1 + 10 + 100) and
-            RedBlackTree.get(0, tree) == None
-
-    @test
-    def insertWith03(): Bool =
-        let inserts = Vector#{(0, 1), (3, 4), (4, 5), (1, 2), (8, 9), (6, 7), (2, 3), (10, 11), (9, 10)};
-        let (kept, overWrite) = Vector.splitAt(Vector.length(inserts), inserts);
-        let treeWithInserts = inserts |> Vector.foldRight(match (k, v) -> RedBlackTree.insert(k, v), RedBlackTree.empty());
-        let treeWithUpdates = overWrite |> Vector.foldRight(match (k, _) -> RedBlackTree.insertWith(k_ -> v -> v1 -> k_ + v + v1, -1, k), treeWithInserts);
-        kept |> Vector.forAll(match (k, v) -> RedBlackTree.get(k, treeWithUpdates) == Some(v)) and
-            overWrite |> Vector.forAll(match (k, v) -> RedBlackTree.get(k, treeWithUpdates) == Some(k + v - 1))
-
-    /////////////////////////////////////////////////////////////////////////////
-    // updateWith                                                              //
-    /////////////////////////////////////////////////////////////////////////////
-
-    @test
-    def updateWith01(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.updateWith(_k -> _v -> Some(1), 0);
-        RedBlackTree.get(0, tree) == None and
-            RedBlackTree.get(1, tree) == None
-
-    @test
-    def updateWith02(): Bool =
-        let tree = (RedBlackTree.empty(): RedBlackTree[Int32, Int32]) |>
-            RedBlackTree.insert(1, 10) |>
-            RedBlackTree.insert(2, 11) |>
-            RedBlackTree.updateWith(k -> v -> Some(k + v), 1) |>
-            RedBlackTree.updateWith(k -> v -> Some(k + v), 3) |>
-            RedBlackTree.updateWith(_ -> _ -> None, 1);
-        RedBlackTree.get(1, tree) == Some(1 + 10) and
-            RedBlackTree.get(2, tree) == Some(11) and
-            RedBlackTree.get(3, tree) == None and
-            RedBlackTree.get(10, tree) == None and
-            RedBlackTree.get(11, tree) == None
-
-    @test
-    def updateWith03(): Bool =
-        let inserts = Vector#{(0, 1), (3, 4), (4, 5), (1, 2), (8, 9), (6, 7), (2, 3), (10, 11), (9, 10)};
-        let nonReplacingUpdates = Vector#{(11, 12), (12, 13), (13, 14), (-1, -2), (-2, -3)};
-        let (kept, overWrite) = Vector.splitAt(Vector.length(inserts), inserts);
-        let updates = Vector.append(nonReplacingUpdates, overWrite);
-        let treeWithInserts = inserts |> Vector.foldRight(match (k, v) -> RedBlackTree.insert(k, v), RedBlackTree.empty());
-        let treeWithUpdates = updates |> Vector.foldRight(match (k, _) -> RedBlackTree.updateWith(k_ -> v -> Some(k_ + v), k), treeWithInserts);
-        kept |> Vector.forAll(match (k, v) -> RedBlackTree.get(k, treeWithUpdates) == Some(v)) and
-            overWrite |> Vector.forAll(match (k, v) -> RedBlackTree.get(k, treeWithUpdates) == Some(k + v)) and
-            nonReplacingUpdates |> Vector.forAll(match (k, _) -> RedBlackTree.get(k, treeWithUpdates) == None)
 
     /////////////////////////////////////////////////////////////////////////////
     // parMapWithKey                                                           //
@@ -328,7 +252,7 @@ mod TestRedBlackTree {
         let range = List.range(0, 2000);
         let m = List.zip(range, range) |> List.toMap;
         let a = MutList.empty(rc);
-        discard Map.mapWithKey((k, v) -> { let b = MutList.empty(rc); MutList.push!(k, b); MutList.append(MutList.toList(b), a); v }, m);
+        discard Map.mapWithKey((k, v) -> { let b = MutList.empty(rc); MutList.push!(k, b); MutList.append!(MutList.toList(b), a); v }, m);
         MutList.toList(a) == range
     }
 
@@ -352,12 +276,12 @@ mod TestRedBlackTree {
     @test
     def parCount01(): Bool =
         let Map.Map(t) = List.zip(List.range(0, 2000), List.range(0, 2000)) |> List.toMap;
-        RedBlackTree.parCount((k, v) -> k == v, t) == 2000
+        RedBlackTree.parCount(threads() - 1, (k, v) -> k == v, t) == 2000
 
     @test
     def parCount02(): Bool =
         let Map.Map(t) = List.zip(List.range(0, 2000), List.range(-1000, 1000)) |> List.toMap;
-        RedBlackTree.parCount((k, v) -> k - 1000 == v, t) == 2000
+        RedBlackTree.parCount(threads() - 1, (k, v) -> k - 1000 == v, t) == 2000
 
 
     /////////////////////////////////////////////////////////////////////////////
@@ -368,13 +292,13 @@ mod TestRedBlackTree {
     def parMinimumBy01(): Bool =
         let range = List.range(0, 2000);
         let Map.Map(t) = List.zip(range, range) |> List.toMap;
-        RedBlackTree.parMinimumBy((_, x, _, y) -> x <=> y, t) == Some((0, 0))
+        RedBlackTree.parMinimumBy(threads() - 1, (_, x, _, y) -> x <=> y, t) == Some((0, 0))
 
     @test
     def parMinimumBy02(): Bool =
         let range = List.range(0, 2000);
         let Map.Map(t) = List.zip(range, List.reverse(range)) |> List.toMap;
-        RedBlackTree.parMinimumBy((_, x, _, y) -> x <=> y, t) == Some((1999, 0))
+        RedBlackTree.parMinimumBy(threads() - 1, (_, x, _, y) -> x <=> y, t) == Some((1999, 0))
 
 
     /////////////////////////////////////////////////////////////////////////////
@@ -385,13 +309,13 @@ mod TestRedBlackTree {
     def parMaximumBy01(): Bool =
         let range = List.range(0, 2000);
         let Map.Map(t) = List.zip(range, range) |> List.toMap;
-        RedBlackTree.parMaximumBy((_, x, _, y) -> x <=> y, t) == Some((1999, 1999))
+        RedBlackTree.parMaximumBy(threads() - 1, (_, x, _, y) -> x <=> y, t) == Some((1999, 1999))
 
     @test
     def parMaximumBy02(): Bool =
         let range = List.range(0, 2000);
         let Map.Map(t) = List.zip(range, List.reverse(range)) |> List.toMap;
-        RedBlackTree.parMaximumBy((_, x, _, y) -> x <=> y, t) == Some((0, 1999))
+        RedBlackTree.parMaximumBy(threads() - 1, (_, x, _, y) -> x <=> y, t) == Some((0, 1999))
 
 
     /////////////////////////////////////////////////////////////////////////////
@@ -426,20 +350,20 @@ mod TestRedBlackTree {
     def parExists01(): Bool =
         let l = List.range(1, 2001);
         let Map.Map(t) = List.zip(l, l) |> List.toMap;
-        RedBlackTree.parExists((k, v) -> k == 1002 and v == 1002, t)
+        RedBlackTree.parExists(threads() - 1, (k, v) -> k == 1002 and v == 1002, t)
 
     @test
     def parExists02(): Bool =
         let l1 = List.range(1, 2001);
         let l2 = List.range(-2000, 0);
         let Map.Map(t) = List.zip(l1, l2) |> List.toMap;
-        RedBlackTree.parExists((k, v) -> k == 1002 and v == -999, t)
+        RedBlackTree.parExists(threads() - 1, (k, v) -> k == 1002 and v == -999, t)
 
     @test
     def parExists03(): Bool =
         let l = List.range(1, 2001);
         let Map.Map(t) = List.zip(l, l) |> List.toMap;
-        not RedBlackTree.parExists((k, v) -> k < 0 or v > 3000, t)
+        not RedBlackTree.parExists(threads() - 1, (k, v) -> k < 0 or v > 3000, t)
 
 
     /////////////////////////////////////////////////////////////////////////////
@@ -450,20 +374,20 @@ mod TestRedBlackTree {
     def parForAll01(): Bool =
         let l = List.range(1, 2001);
         let Map.Map(t) = List.zip(l, l) |> List.toMap;
-        RedBlackTree.parForAll((k, v) -> k == v, t)
+        RedBlackTree.parForAll(threads() - 1, (k, v) -> k == v, t)
 
     @test
     def parForAll02(): Bool =
         let l = List.range(1, 2001);
         let Map.Map(t) = List.zip(l, l) |> List.toMap;
-        not RedBlackTree.parForAll((k, _) -> k == 1, t)
+        not RedBlackTree.parForAll(threads() - 1, (k, _) -> k == 1, t)
 
     @test
     def parForAll03(): Bool =
         let l1 = List.range(1, 2001);
         let l2 = List.range(-2000, 0);
         let Map.Map(t) = List.zip(l1, l2) |> List.toMap;
-        RedBlackTree.parForAll((k, v) -> k > v, t)
+        RedBlackTree.parForAll(threads() - 1, (k, v) -> k > v, t)
 
     /////////////////////////////////////////////////////////////////////////////
     // forEach                                                                 //
@@ -649,12 +573,12 @@ mod TestRedBlackTree {
     @test
     def parSumWith01(): Bool =
         let Map.Map(t) = List.zip(List.range(0, 2000), List.range(0, 2000)) |> List.toMap;
-        RedBlackTree.parSumWith((k, v) -> k + v, t) == 3998000
+        RedBlackTree.parSumWith(threads() - 1, (k, v) -> k + v, t) == 3998000
 
     @test
     def parSumWith02(): Bool =
         let Map.Map(t) = List.zip(List.range(0, 2000), List.range(-1000, 1000)) |> List.toMap;
-        RedBlackTree.parSumWith((k, v) -> k + v, t) == 1998000
+        RedBlackTree.parSumWith(threads() - 1, (k, v) -> k + v, t) == 1998000
 
 
     /////////////////////////////////////////////////////////////////////////////

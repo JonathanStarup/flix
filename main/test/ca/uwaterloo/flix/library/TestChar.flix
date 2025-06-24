@@ -411,59 +411,59 @@ def isTitleCase05(): Bool = Char.isTitleCase('\u01F3') == false      // dz (sing
 def isTitleCase06(): Bool = Char.isTitleCase('\u1F99') == true      // Greek Capital Letter Eta with Dasia and Prosgegrammeni
 
 /////////////////////////////////////////////////////////////////////////////
-// isWhitespace                                                            //
+// isWhiteSpace                                                            //
 /////////////////////////////////////////////////////////////////////////////
 
 @test
-def isWhitespace01(): Bool = Char.isWhitespace('a') == false
+def isWhiteSpace01(): Bool = Char.isWhiteSpace('a') == false
 
 @test
-def isWhitespace02(): Bool = Char.isWhitespace('A') == false
+def isWhiteSpace02(): Bool = Char.isWhiteSpace('A') == false
 
 @test
-def isWhitespace03(): Bool = Char.isWhitespace(' ') == true
+def isWhiteSpace03(): Bool = Char.isWhiteSpace(' ') == true
 
 @test
-def isWhitespace04(): Bool = Char.isWhitespace('+') == false
+def isWhiteSpace04(): Bool = Char.isWhiteSpace('+') == false
 
 @test
-def isWhitespace05(): Bool = Char.isWhitespace('0') == false
+def isWhiteSpace05(): Bool = Char.isWhiteSpace('0') == false
 
 @test
-def isWhitespace06(): Bool = Char.isWhitespace('9') == false
+def isWhiteSpace06(): Bool = Char.isWhiteSpace('9') == false
 
 @test
-def isWhitespace07(): Bool = Char.isWhitespace('†') == false
+def isWhiteSpace07(): Bool = Char.isWhiteSpace('†') == false
 
 @test
-def isWhitespace08(): Bool = Char.isWhitespace('\u00FE') == false     // lower-case thorn
+def isWhiteSpace08(): Bool = Char.isWhiteSpace('\u00FE') == false     // lower-case thorn
 
 @test
-def isWhitespace09(): Bool = Char.isWhitespace('\u00B1') == false     // plus-minus sign
+def isWhiteSpace09(): Bool = Char.isWhiteSpace('\u00B1') == false     // plus-minus sign
 
 @test
-def isWhitespace10(): Bool = Char.isWhitespace('â') == false
+def isWhiteSpace10(): Bool = Char.isWhiteSpace('â') == false
 
 @test
-def isWhitespace11(): Bool = Char.isWhitespace('Â') == false
+def isWhiteSpace11(): Bool = Char.isWhiteSpace('Â') == false
 
 @test
-def isWhitespace12(): Bool = Char.isWhitespace('\u0009') == true    // tab
+def isWhiteSpace12(): Bool = Char.isWhiteSpace('\u0009') == true    // tab
 
 @test
-def isWhitespace13(): Bool = Char.isWhitespace('\t') == true        // tab
+def isWhiteSpace13(): Bool = Char.isWhiteSpace('\t') == true        // tab
 
 @test
-def isWhitespace14(): Bool = Char.isWhitespace('\u000A') == true    // line-feed
+def isWhiteSpace14(): Bool = Char.isWhiteSpace('\u000A') == true    // line-feed
 
 @test
-def isWhitespace15(): Bool = Char.isWhitespace('\n') == true        // line-feed
+def isWhiteSpace15(): Bool = Char.isWhiteSpace('\n') == true        // line-feed
 
 @test
-def isWhitespace16(): Bool = Char.isWhitespace('\u000D') == true    // carriage-return
+def isWhiteSpace16(): Bool = Char.isWhiteSpace('\u000D') == true    // carriage-return
 
 @test
-def isWhitespace17(): Bool = Char.isWhitespace('\r') == true        // carriage-return
+def isWhiteSpace17(): Bool = Char.isWhiteSpace('\r') == true        // carriage-return
 
 /////////////////////////////////////////////////////////////////////////////
 // isDefined                                                               //

@@ -107,7 +107,7 @@ mod ClassHierarchyAnalysis {
     pub def illegalFinalClassExtension(p: Program): Vector[String] =
         let fcs  = inject p#finalClasses into Final/1;
         let rule = #{
-            ExtendsFinalClass(sub, super)  :- Final(super), Subtype(sub, super), if sub != super.
+            ExtendsFinalClass(sub, super)  :- Final(super), Subtype(sub, super), if (sub != super).
         };
         query fcs, rule, classHierarchyAnalysis(p) select tpe from ExtendsFinalClass(tpe, _)
 

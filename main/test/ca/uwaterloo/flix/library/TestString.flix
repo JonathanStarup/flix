@@ -258,7 +258,7 @@ def trim06(): Bool = "" == String.trim("  ")
 @test
 def lineSeparator01(): Bool =
     let newline = String.lineSeparator();
-    Char.isWhitespace(String.charAt(0, newline)) == true
+    Char.isWhiteSpace(String.charAt(0, newline)) == true
 
 @test
 def lineSeparator02(): Bool =
@@ -1998,29 +1998,29 @@ def isAscii09(): Bool = String.isAscii("a†") == false
 def isAscii10(): Bool = String.isAscii("†b") == false
 
 /////////////////////////////////////////////////////////////////////////////
-// isWhitespace                                                            //
+// isWhiteSpace                                                            //
 /////////////////////////////////////////////////////////////////////////////
 
 @test
-def isWhitespace01(): Bool = String.isWhitespace("") == true
+def isWhiteSpace01(): Bool = String.isWhiteSpace("") == true
 
 @test
-def isWhitespace02(): Bool = String.isWhitespace(" ") == true
+def isWhiteSpace02(): Bool = String.isWhiteSpace(" ") == true
 
 @test
-def isWhitespace03(): Bool = String.isWhitespace("A") == false
+def isWhiteSpace03(): Bool = String.isWhiteSpace("A") == false
 
 @test
-def isWhitespace04(): Bool = String.isWhitespace("0") == false
+def isWhiteSpace04(): Bool = String.isWhiteSpace("0") == false
 
 @test
-def isWhitespace05(): Bool = String.isWhitespace("~") == false
+def isWhiteSpace05(): Bool = String.isWhiteSpace("~") == false
 
 @test
-def isWhitespace06(): Bool = String.isWhitespace(String.lineSeparator()) == true
+def isWhiteSpace06(): Bool = String.isWhiteSpace(String.lineSeparator()) == true
 
 @test
-def isWhitespace07(): Bool = String.isWhitespace("  ") == true
+def isWhiteSpace07(): Bool = String.isWhiteSpace("  ") == true
 
 /////////////////////////////////////////////////////////////////////////////
 // trimLeft                                                                //

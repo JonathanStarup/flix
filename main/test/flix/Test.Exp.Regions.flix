@@ -25,7 +25,7 @@ mod Test.Exp.Regions {
     def testRegions1Region03(): Bool =
         region rc {
             let m = MutMap.empty(rc);
-            MutMap.put(1, 1, m);
+            MutMap.put!(1, 1, m);
             MutMap.get(1, m) == Some(1)
         }
 
@@ -33,7 +33,7 @@ mod Test.Exp.Regions {
     def testRegions1Region1Nested01(): Bool =
         region rc {
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
-            MutMap.put(1, 1, Array.get(0, a));
+            MutMap.put!(1, 1, Array.get(0, a));
             MutMap.get(1, Array.get(0, a)) == Some(1)
         }
 
@@ -54,7 +54,7 @@ mod Test.Exp.Regions {
             let m = MutMap.empty(rc);
             let l = MutList.empty(rc);
             MutList.push!(1, l);
-            MutMap.put(1, l, m);
+            MutMap.put!(1, l, m);
             match MutMap.get(1, m) {
                 case Some(x) => x `MutList.sameElements` l
                 case _       => unreachable!()
@@ -65,7 +65,7 @@ mod Test.Exp.Regions {
     def testRegions1Region1Nested04(): Bool =
         region rc {
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
-            MutMap.put(1, 1, Array.get(0, a));
+            MutMap.put!(1, 1, Array.get(0, a));
             MutMap.get(1, Array.get(0, a)) == Some(1)
         }
 
@@ -86,7 +86,7 @@ mod Test.Exp.Regions {
             let m = MutMap.empty(rc);
             let l = MutList.empty(rc);
             MutList.push!(1, l);
-            MutMap.put(1, l, m);
+            MutMap.put!(1, l, m);
             match MutMap.get(1, m) {
                 case Some(x) => x `MutList.sameElements` l
                 case _       => unreachable!()
@@ -99,7 +99,7 @@ mod Test.Exp.Regions {
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
             let l = MutList.empty(rc);
             MutList.push!(1, l);
-            MutMap.put(1, l, Array.get(0, a));
+            MutMap.put!(1, l, Array.get(0, a));
             match MutMap.get(1, Array.get(0, a)) {
                 case Some(k) => MutList.pop!(k) == Some(1)
                 case _       => unreachable!()
@@ -111,7 +111,7 @@ mod Test.Exp.Regions {
         region rc {
             let l = MutList.empty(rc);
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
-            MutMap.put(1, 1, Array.get(0, a));
+            MutMap.put!(1, 1, Array.get(0, a));
             MutList.push!(a, l);
             match MutList.pop!(l) {
                 case Some(b) => MutMap.get(1, Array.get(0, b)) == Some(1)
@@ -125,7 +125,7 @@ mod Test.Exp.Regions {
             let m = MutMap.empty(rc);
             let l = MutList.empty(rc);
             MutList.push!(Array.repeat(rc, 8, 1), l);
-            MutMap.put(1, l, m);
+            MutMap.put!(1, l, m);
             match MutMap.get(1, m) {
                 case Some(k) => match MutList.pop!(k) {
                     case Some(a) => Array.get(0, a) == 1
@@ -141,7 +141,7 @@ mod Test.Exp.Regions {
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
             let l = MutList.empty(rc);
             MutList.push!(Array.repeat(rc, 8, 1), l);
-            MutMap.put(1, l, Array.get(0, a));
+            MutMap.put!(1, l, Array.get(0, a));
             match MutMap.get(1, Array.get(0, a)) {
                 case Some(k) => match MutList.pop!(k) {
                     case Some(b) => Array.get(0, b) == 1
@@ -158,7 +158,7 @@ mod Test.Exp.Regions {
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
             let l1 = MutList.empty(rc);
             MutList.push!(1, l1);
-            MutMap.put(1, l1, Array.get(0, a));
+            MutMap.put!(1, l1, Array.get(0, a));
             MutList.push!(a, l);
             match MutList.pop!(l) {
                 case Some(b) => match MutMap.get(1, Array.get(0, b)) {
@@ -175,9 +175,9 @@ mod Test.Exp.Regions {
             let m = MutMap.empty(rc);
             let l = MutList.empty(rc);
             let a = Array.repeat(rc, 8, MutMap.empty(rc));
-            MutMap.put(1, 1, Array.get(0, a));
+            MutMap.put!(1, 1, Array.get(0, a));
             MutList.push!(a, l);
-            MutMap.put(1, l, m);
+            MutMap.put!(1, l, m);
             match MutMap.get(1, m) {
                 case Some(k) => match MutList.pop!(k) {
                     case Some(b) => MutMap.get(1, Array.get(0, b)) == Some(1)
@@ -215,11 +215,11 @@ mod Test.Exp.Regions {
     def testRegions2Regions03(): Bool =
         region rc1 {
             let m1 = MutMap.empty(rc1);
-            MutMap.put(1, 1, m1);
+            MutMap.put!(1, 1, m1);
             MutMap.get(1, m1) == Some(1) and Some(1) ==
             region rc2 {
                 let m2 = MutMap.empty(rc2);
-                MutMap.put(1, 1, m2);
+                MutMap.put!(1, 1, m2);
                 MutMap.get(1, m2)
             }
         }
@@ -252,11 +252,11 @@ mod Test.Exp.Regions {
     def testRegions2Regions06(): Bool =
         region rc1 {
             let m1 = MutMap.empty(rc1);
-            MutMap.put(1, 1, m1);
+            MutMap.put!(1, 1, m1);
             MutMap.get(1, m1) == Some(1) and Some(1) ==
             region rc2 {
                 let m2 = MutMap.empty(rc2);
-                MutMap.put(1, 1, m2);
+                MutMap.put!(1, 1, m2);
                 MutMap.get(1, m2)
             }
         }
@@ -289,11 +289,11 @@ mod Test.Exp.Regions {
     def testRegions2Regions09(): Bool =
         region rc1 {
             let m1 = MutMap.empty(rc1);
-            MutMap.put(1, 1, m1);
+            MutMap.put!(1, 1, m1);
             MutMap.get(1, m1) == Some(1) and Some(1) ==
             region rc2 {
                 let m2 = MutMap.empty(rc2);
-                MutMap.put(1, 1, m2);
+                MutMap.put!(1, 1, m2);
                 MutMap.get(1, m2)
             }
         }
@@ -326,11 +326,11 @@ mod Test.Exp.Regions {
     def testRegions2Regions12(): Bool =
         region rc1 {
             let m1 = MutMap.empty(rc1);
-            MutMap.put(1, 1, m1);
+            MutMap.put!(1, 1, m1);
             MutMap.get(1, m1) == Some(1) and Some(1) ==
             region rc2 {
                 let m2 = MutMap.empty(rc2);
-                MutMap.put(1, 1, m2);
+                MutMap.put!(1, 1, m2);
                 MutMap.get(1, m2)
             }
         }
@@ -364,8 +364,8 @@ mod Test.Exp.Regions {
             let m1: MutMap[Int32, Int32, _] = MutMap.empty(rc1);
             region rc2 {
                 let m2 = MutMap.empty(rc2);
-                MutMap.put(1, 1, m1);
-                MutMap.put(1, 1, m2);
+                MutMap.put!(1, 1, m1);
+                MutMap.put!(1, 1, m2);
                 MutMap.get(1, m1) == Some(1) and Some(1) == MutMap.get(1, m2)
             }
         }
@@ -375,7 +375,7 @@ mod Test.Exp.Regions {
         region rc1 {
             region rc2 {
                 let a: Array[MutMap[Int32, Int32, rc2], rc1] = Array.repeat(rc1, 8, MutMap.empty(rc2));
-                MutMap.put(1, 1, Array.get(0, a));
+                MutMap.put!(1, 1, Array.get(0, a));
                 MutMap.get(1, Array.get(0, a)) == Some(1)
             }
         }
@@ -400,7 +400,7 @@ mod Test.Exp.Regions {
                 let m: MutMap[Int32, MutList[Int32, rc2], rc1] = MutMap.empty(rc1);
                 let l = MutList.empty(rc2);
                 MutList.push!(1, l);
-                MutMap.put(1, l, m);
+                MutMap.put!(1, l, m);
                 match MutMap.get(1, m) {
                     case Some(k) => MutList.pop!(k) == Some(1)
                     case _       => unreachable!()
@@ -413,7 +413,7 @@ mod Test.Exp.Regions {
         region rc1 {
             region rc2 {
                 let a: Array[MutMap[Int32, Int32, rc1], rc2] = Array.repeat(rc2, 8, MutMap.empty(rc1));
-                MutMap.put(1, 1, Array.get(0, a));
+                MutMap.put!(1, 1, Array.get(0, a));
                 MutMap.get(1, Array.get(0, a)) == Some(1)
             }
         }
@@ -438,7 +438,7 @@ mod Test.Exp.Regions {
             region rc2 {
                 let m: MutMap[Int32, MutList[Int32, rc1], rc2] = MutMap.empty(rc2);
                 MutList.push!(1, l);
-                MutMap.put(1, l, m);
+                MutMap.put!(1, l, m);
                 match MutMap.get(1, m) {
                     case Some(k) => MutList.nth(0, k) == Some(1)
                     case _       => unreachable!()
@@ -453,7 +453,7 @@ mod Test.Exp.Regions {
                 let a: Array[MutMap[Int32, MutList[Int32, rc1], rc2], rc2] = Array.repeat(rc2, 8, MutMap.empty(rc2));
                 let l = MutList.empty(rc1);
                 MutList.push!(1, l);
-                MutMap.put(1, l, Array.get(0, a));
+                MutMap.put!(1, l, Array.get(0, a));
                 match MutMap.get(1, Array.get(0, a)) {
                     case Some(k) => MutList.nth(0, k) == Some(1)
                     case _       => unreachable!()
@@ -468,7 +468,7 @@ mod Test.Exp.Regions {
                 let l: MutList[Array[MutMap[Int32, Int32, rc2], rc1], rc2] = MutList.empty(rc2);
                 let a = Array.repeat(rc1, 8, MutMap.empty(rc2));
                 MutList.push!(a, l);
-                MutMap.put(1, 1, Array.get(0, a)); // Mutate a[0], the MutList `l` above should also be updated by this
+                MutMap.put!(1, 1, Array.get(0, a)); // Mutate a[0], the MutList `l` above should also be updated by this
                 match MutList.pop!(l) {
                     case Some(b) => MutMap.get(1, Array.get(0, b)) == Some(1)
                     case _       => unreachable!()
@@ -483,7 +483,7 @@ mod Test.Exp.Regions {
                 let m: MutMap[Int32, MutList[Array[Int32, rc2], rc2], rc1] = MutMap.empty(rc1);
                 let l = MutList.empty(rc2);
                 MutList.push!(Array.repeat(rc2, 8, 1), l);
-                MutMap.put(1, l, m);
+                MutMap.put!(1, l, m);
                 match MutMap.get(1, m) {
                     case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0)) == Some(1)
                     case _       => unreachable!()
@@ -498,7 +498,7 @@ mod Test.Exp.Regions {
                 let a: Array[MutMap[Int32, MutList[Array[Int32, rc1], rc1], rc2], rc2] = Array.repeat(rc2, 8, MutMap.empty(rc2));
                 let l = MutList.empty(rc1);
                 MutList.push!(Array.repeat(rc1, 8, 1), l);
-                MutMap.put(1, l, Array.get(0, a));
+                MutMap.put!(1, l, Array.get(0, a));
                 match MutMap.get(1, Array.get(0, a)) {
                     case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0)) == Some(1)
                     case _       => unreachable!()
@@ -514,7 +514,7 @@ mod Test.Exp.Regions {
                 let a = Array.repeat(rc1, 8, MutMap.empty(rc2));
                 MutList.push!(a, l);
                 let l2 = MutList.empty(rc2);
-                MutMap.put(1, l2, Array.get(0, a)); // Mutate a[0], the MutList `l` above should also be updated by this
+                MutMap.put!(1, l2, Array.get(0, a)); // Mutate a[0], the MutList `l` above should also be updated by this
                 MutList.push!(1, l2);
                 match MutList.pop!(l) {
                     case Some(b) => match MutMap.get(1, Array.get(0, b)) {
@@ -534,8 +534,8 @@ mod Test.Exp.Regions {
                 let l = MutList.empty(rc1);
                 let a = Array.repeat(rc2, 8, MutMap.empty(rc2));
                 MutList.push!(a, l);
-                MutMap.put(1, 1, Array.get(0, a)); // Mutate the innermost nested MutMap
-                MutMap.put(1, l, m);
+                MutMap.put!(1, 1, Array.get(0, a)); // Mutate the innermost nested MutMap
+                MutMap.put!(1, l, m);
                 match MutMap.get(1, m) {
                     case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0))
                                                       |> Option.flatMap(MutMap.get(1)) == Some(1)
@@ -553,7 +553,7 @@ mod Test.Exp.Regions {
                 region _ {
                     let m = MutMap.empty(rc1);
                     MutList.push!(1, l);
-                    MutMap.put(1, 1, m);
+                    MutMap.put!(1, 1, m);
                     Array.get(0, a) == 1 and MutList.pop!(l) == Some(1) and MutMap.get(1, m) == Some(1)
                 }
             }
@@ -568,7 +568,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = MutMap.empty(rc3);
                     MutList.push!(1, l);
-                    MutMap.put(1, 1, m);
+                    MutMap.put!(1, 1, m);
                     Array.get(0, a) == 1 and MutList.pop!(l) == Some(1) and MutMap.get(1, m) == Some(1)
                 }
             }
@@ -583,7 +583,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = MutMap.empty(rc3);
                     MutList.push!(1, l);
-                    MutMap.put(1, 1, m);
+                    MutMap.put!(1, 1, m);
                     Array.get(0, a) == 1 and MutList.pop!(l) == Some(1) and MutMap.get(1, m) == Some(1)
                 }
             }
@@ -598,7 +598,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = MutMap.empty(rc3);
                     MutList.push!(1, l);
-                    MutMap.put(1, 1, m);
+                    MutMap.put!(1, 1, m);
                     Array.get(0, a) == 1 and MutList.pop!(l) == Some(1) and MutMap.get(1, m) == Some(1)
                 }
             }
@@ -624,7 +624,7 @@ mod Test.Exp.Regions {
                 region _ {
                     let m = MutMap.empty(rc1);
                     MutList.push!(m, l);
-                    MutMap.put(1, 1, m);
+                    MutMap.put!(1, 1, m);
                     match MutList.pop!(l) {
                         case Some(n) => MutMap.get(1, n) == Some(1)
                         case _       => unreachable!()
@@ -641,7 +641,7 @@ mod Test.Exp.Regions {
                     let m: MutMap[Int32, MutList[Int32, rc3], rc2] = MutMap.empty(rc2);
                     let l = MutList.empty(rc3);
                     MutList.push!(1, l);
-                    MutMap.put(1, l, m);
+                    MutMap.put!(1, l, m);
                     match MutMap.get(1, m) {
                         case Some(k) => MutList.pop!(k) == Some(1)
                         case _       => unreachable!()
@@ -659,7 +659,7 @@ mod Test.Exp.Regions {
                     let m = MutMap.empty(rc2);
                     let l = MutList.empty(rc3);
                     MutList.push!(1, l);
-                    MutMap.put(1, l, m);
+                    MutMap.put!(1, l, m);
                     Array.put(m, 0, a);
                     match MutMap.get(1, Array.get(0, a)) {
                         case Some(k) => MutList.pop!(k) == Some(1)
@@ -677,7 +677,7 @@ mod Test.Exp.Regions {
                     let l: MutList[Array[MutMap[Int32, Int32, rc1], rc2], rc3] = MutList.empty(rc3);
                     let a = Array.repeat(rc2, 8, MutMap.empty(rc1));
                     MutList.push!(a, l);
-                    MutMap.put(1, 1, Array.get(0, a));
+                    MutMap.put!(1, 1, Array.get(0, a));
                     match MutList.pop!(l) {
                         case Some(b) => MutMap.get(1, Array.get(0, b)) == Some(1)
                         case _       => unreachable!()
@@ -693,7 +693,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m: MutMap[Int32, MutList[Array[Int32, rc1], rc3], rc2] = MutMap.empty(rc2);
                     let l = MutList.empty(rc3);
-                    MutMap.put(1, l, m);
+                    MutMap.put!(1, l, m);
                     MutList.push!(Array.repeat(rc1, 8, 1), l);
                     match MutMap.get(1, m) {
                         case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0)) == Some(1)
@@ -710,7 +710,7 @@ mod Test.Exp.Regions {
             region rc2 {
                 region rc3 {
                     let a: Array[MutMap[Int32, MutList[Array[Int32, rc1], rc1], rc2], rc3] = Array.repeat(rc3, 8, MutMap.empty(rc2));
-                    MutMap.put(1, l, Array.get(0, a));
+                    MutMap.put!(1, l, Array.get(0, a));
                     MutList.push!(Array.repeat(rc1, 8, 1), l);
                     match MutMap.get(1, Array.get(0, a)) {
                         case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0)) == Some(1)
@@ -729,7 +729,7 @@ mod Test.Exp.Regions {
                     let a = Array.repeat(rc1, 8, MutMap.empty(rc3));
                     let l2 = MutList.empty(rc2);
                     MutList.push!(a, l);
-                    MutMap.put(1, l2, Array.get(0, a));
+                    MutMap.put!(1, l2, Array.get(0, a));
                     MutList.push!(1, l2);
                     match MutList.pop!(l) {
                         case Some(b) => match MutMap.get(1, Array.get(0, b)) {
@@ -750,9 +750,9 @@ mod Test.Exp.Regions {
                     let m: MutMap[Int32, MutList[Array[MutMap[Int32, Int32, rc1], rc3], rc1], rc2] = MutMap.empty(rc2);
                     let l = MutList.empty(rc1);
                     let a = Array.repeat(rc3, 8, MutMap.empty(rc1));
-                    MutMap.put(1, l, m);
+                    MutMap.put!(1, l, m);
                     MutList.push!(a, l);
-                    MutMap.put(1, 1, Array.get(0, a));
+                    MutMap.put!(1, 1, Array.get(0, a));
                     match MutMap.get(1, m) {
                         case Some(k) => MutList.nth(0, k) |> Option.flatMap(Array.nth(0)) |> Option.flatMap(MutMap.get(1)) == Some(1)
                         case _       => unreachable!()
@@ -780,7 +780,7 @@ mod Test.Exp.Regions {
     def testRegions1RegionReferences05(): Bool =
         region rc {
             let m = Ref.fresh(rc, MutMap.empty(rc));
-            MutMap.put(1, 1, Ref.get(m));
+            MutMap.put!(1, 1, Ref.get(m));
             MutMap.get(1, Ref.get(m)) == Some(1)
         }
 
@@ -788,7 +788,7 @@ mod Test.Exp.Regions {
     def testRegions1Region1NestedReferences01(): Bool =
         region rc {
             let a = Ref.fresh(rc, Array.repeat(rc, 8, MutMap.empty(rc)));
-            MutMap.put(1, 1, Array.get(0, Ref.get(a)));
+            MutMap.put!(1, 1, Array.get(0, Ref.get(a)));
             MutMap.get(1, Array.get(0, Ref.get(a))) == Some(1)
         }
 
@@ -809,7 +809,7 @@ mod Test.Exp.Regions {
             let m = MutMap.empty(rc);
             let l = Ref.fresh(rc, MutList.empty(rc));
             MutList.push!(1, Ref.get(l));
-            MutMap.put(1, l, m);
+            MutMap.put!(1, l, m);
             match MutMap.get(1, m) {
                 case Some(x) => Ref.get(x) `MutList.sameElements` Ref.get(l)
                 case _       => unreachable!()
@@ -820,7 +820,7 @@ mod Test.Exp.Regions {
     def testRegions1Region1NestedReferences04(): Bool =
         region rc {
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
-            MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
             MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) == Some(1)
         }
 
@@ -841,7 +841,7 @@ mod Test.Exp.Regions {
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
             let l = Ref.fresh(rc, MutList.empty(rc));
             MutList.push!(1, Ref.get(l));
-            MutMap.put(1, l, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, l, Ref.get(Array.get(0, Ref.get(a))));
             match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                 case Some(k) => MutList.pop!(Ref.get(k)) == Some(1)
                 case _       => unreachable!()
@@ -853,7 +853,7 @@ mod Test.Exp.Regions {
         region rc {
             let l = Ref.fresh(rc, MutList.empty(rc));
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
-            MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
             MutList.push!(a, Ref.get(l));
             match MutList.pop!(Ref.get(l)) {
                 case Some(b) => MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) == Some(1)
@@ -867,7 +867,7 @@ mod Test.Exp.Regions {
             let m = Ref.fresh(rc, MutMap.empty(rc));
             let l = Ref.fresh(rc, MutList.empty(rc));
             MutList.push!(Ref.fresh(rc, Array.repeat(rc, 8, 1)), Ref.get(l));
-            MutMap.put(1, l, Ref.get(m));
+            MutMap.put!(1, l, Ref.get(m));
             match MutMap.get(1, Ref.get(m)) {
                 case Some(k) => match MutList.pop!(Ref.get(k)) {
                     case Some(a) => Array.get(0, Ref.get(a)) == 1
@@ -883,7 +883,7 @@ mod Test.Exp.Regions {
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
             let l = Ref.fresh(rc, MutList.empty(rc));
             MutList.push!(Ref.fresh(rc, Array.repeat(rc, 8, 1)), Ref.get(l));
-            MutMap.put(1, l, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, l, Ref.get(Array.get(0, Ref.get(a))));
             match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                 case Some(k) => match MutList.pop!(Ref.get(k)) {
                     case Some(b) => Array.get(0, Ref.get(b)) == 1
@@ -900,7 +900,7 @@ mod Test.Exp.Regions {
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
             let l1 = Ref.fresh(rc, MutList.empty(rc));
             MutList.push!(1, Ref.get(l1));
-            MutMap.put(1, l1, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, l1, Ref.get(Array.get(0, Ref.get(a))));
             MutList.push!(a, Ref.get(l));
             match MutList.pop!(Ref.get(l)) {
                 case Some(b) => match MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) {
@@ -917,9 +917,9 @@ mod Test.Exp.Regions {
             let m = Ref.fresh(rc, MutMap.empty(rc));
             let l = Ref.fresh(rc, MutList.empty(rc));
             let a = Ref.fresh(rc, Array.repeat(rc, 8, Ref.fresh(rc, MutMap.empty(rc))));
-            MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+            MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
             MutList.push!(a, Ref.get(l));
-            MutMap.put(1, l, Ref.get(m));
+            MutMap.put!(1, l, Ref.get(m));
             match MutMap.get(1, Ref.get(m)) {
                 case Some(k) => match MutList.pop!(Ref.get(k)) {
                     case Some(b) => MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) == Some(1)
@@ -971,8 +971,8 @@ mod Test.Exp.Regions {
             region rc2 {
                 let m1 = Ref.fresh(rc2, MutMap.empty(rc1));
                 let m2 = Ref.fresh(rc1, MutMap.empty(rc2));
-                MutMap.put(1, 1, Ref.get(m1));
-                MutMap.put(1, 1, Ref.get(m2));
+                MutMap.put!(1, 1, Ref.get(m1));
+                MutMap.put!(1, 1, Ref.get(m2));
                 MutMap.get(1, Ref.get(m1)) == Some(1) and Some(1) == MutMap.get(1, Ref.get(m2))
             }
         }
@@ -1004,7 +1004,7 @@ mod Test.Exp.Regions {
         region rc1 {
             region rc2 {
                 let a: Ref[Array[Ref[MutMap[Int32, Int32, rc2], rc1], rc1], rc2] = Ref.fresh(rc2, Array.repeat(rc1, 8, Ref.fresh(rc1, MutMap.empty(rc2))));
-                MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+                MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
                 MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) == Some(1)
             }
         }
@@ -1029,7 +1029,7 @@ mod Test.Exp.Regions {
                 let m: Ref[Ref[MutMap[Int32, Ref[MutList[Int32, rc2], rc1], rc1], rc1], rc2] = Ref.fresh(rc2, Ref.fresh(rc1, MutMap.empty(rc1)));
                 let l = Ref.fresh(rc1, MutList.empty(rc2));
                 MutList.push!(1, Ref.get(l));
-                MutMap.put(1, l, Ref.get(Ref.get(m)));
+                MutMap.put!(1, l, Ref.get(Ref.get(m)));
                 match MutMap.get(1, Ref.get(Ref.get(m))) {
                     case Some(k) => MutList.pop!(Ref.get(k)) == Some(1)
                     case _       => unreachable!()
@@ -1042,7 +1042,7 @@ mod Test.Exp.Regions {
         region rc1 {
             region rc2 {
                 let a: Ref[Array[Ref[MutMap[Int32, Int32, rc1], rc2], rc2], rc2] = Ref.fresh(rc2, Array.repeat(rc2, 8, Ref.fresh(rc2, MutMap.empty(rc1))));
-                MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+                MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
                 MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) == Some(1)
             }
         }
@@ -1054,7 +1054,7 @@ mod Test.Exp.Regions {
                 let a: Ref[Array[Ref[MutMap[Int32, Ref[MutList[Int32, rc1], rc1], rc2], rc2], rc2], rc2] = Ref.fresh(rc2, Array.repeat(rc2, 8, Ref.fresh(rc2, MutMap.empty(rc2))));
                 let l = Ref.fresh(rc1, MutList.empty(rc1));
                 MutList.push!(1, Ref.get(l));
-                MutMap.put(1, l, Ref.get(Array.get(0, Ref.get(a))));
+                MutMap.put!(1, l, Ref.get(Array.get(0, Ref.get(a))));
                 match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                     case Some(k) => MutList.nth(0, Ref.get(k)) == Some(1)
                     case _       => unreachable!()
@@ -1069,7 +1069,7 @@ mod Test.Exp.Regions {
                 let l: Ref[MutList[Ref[Array[Ref[MutMap[Int32, Int32, rc2], rc1], rc2], rc1], rc2], rc1] = Ref.fresh(rc1, MutList.empty(rc2));
                 let a = Ref.fresh(rc1, Array.repeat(rc2, 8, Ref.fresh(rc1, MutMap.empty(rc2))));
                 MutList.push!(a, Ref.get(l));
-                MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a)))); // Mutate a[0], the MutList `l` above should also be updated by this
+                MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a)))); // Mutate a[0], the MutList `l` above should also be updated by this
                 match MutList.pop!(Ref.get(l)) {
                     case Some(b) => MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) == Some(1)
                     case _       => unreachable!()
@@ -1084,7 +1084,7 @@ mod Test.Exp.Regions {
                 let m: Ref[MutMap[Int32, Ref[MutList[Ref[Array[Int32, rc2], rc2], rc1], rc2], rc1], rc2] = Ref.fresh(rc2, MutMap.empty(rc1));
                 let l = Ref.fresh(rc2, MutList.empty(rc1));
                 MutList.push!(Ref.fresh(rc2, Array.repeat(rc2, 8, 1)), Ref.get(l));
-                MutMap.put(1, l, Ref.get(m));
+                MutMap.put!(1, l, Ref.get(m));
                 match MutMap.get(1, Ref.get(m)) {
                     case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr))) == Some(1)
                     case _       => unreachable!()
@@ -1099,7 +1099,7 @@ mod Test.Exp.Regions {
                 let a: Ref[Array[Ref[MutMap[Int32, Ref[MutList[Ref[Array[Int32, rc1], rc1], rc1], rc1], rc2], rc2], rc2], rc2] = Ref.fresh(rc2, Array.repeat(rc2, 8, Ref.fresh(rc2, MutMap.empty(rc2))));
                 let l = Ref.fresh(rc1, MutList.empty(rc1));
                 MutList.push!(Ref.fresh(rc1, Array.repeat(rc1, 8, 1)), Ref.get(l));
-                MutMap.put(1, l, Ref.get(Array.get(0, Ref.get(a))));
+                MutMap.put!(1, l, Ref.get(Array.get(0, Ref.get(a))));
                 match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                     case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr))) == Some(1)
                     case _       => unreachable!()
@@ -1115,7 +1115,7 @@ mod Test.Exp.Regions {
                 let a = Ref.fresh(rc2, Array.repeat(rc1, 8, Ref.fresh(rc1, MutMap.empty(rc2))));
                 MutList.push!(a, Ref.get(l));
                 let l2 = Ref.fresh(rc1, MutList.empty(rc2));
-                MutMap.put(1, l2, Ref.get(Array.get(0, Ref.get(a)))); // Mutate a[0], the MutList `l` above should also be updated by this
+                MutMap.put!(1, l2, Ref.get(Array.get(0, Ref.get(a)))); // Mutate a[0], the MutList `l` above should also be updated by this
                 MutList.push!(1, Ref.get(l2));
                 match MutList.pop!(Ref.get(l)) {
                     case Some(b) => match MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) {
@@ -1135,8 +1135,8 @@ mod Test.Exp.Regions {
                 let l = Ref.fresh(rc2, MutList.empty(rc1));
                 let a = Ref.fresh(rc1, Array.repeat(rc2, 8, Ref.fresh(rc1, MutMap.empty(rc2))));
                 MutList.push!(a, Ref.get(l));
-                MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a)))); // Mutate the innermost nested MutMap
-                MutMap.put(1, l, Ref.get(m));
+                MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a)))); // Mutate the innermost nested MutMap
+                MutMap.put!(1, l, Ref.get(m));
                 match MutMap.get(1, Ref.get(m)) {
                     case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr)))
                                                                |> Option.flatMap(m1 -> MutMap.get(1, Ref.get(m1))) == Some(1)
@@ -1154,7 +1154,7 @@ mod Test.Exp.Regions {
                 region _ {
                     let m = Ref.fresh(rc2, MutMap.empty(rc2));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(m));
+                    MutMap.put!(1, 1, Ref.get(m));
                     Array.get(0, Ref.get(a)) == 1 and MutList.pop!(Ref.get(l)) == Some(1) and MutMap.get(1, Ref.get(m)) == Some(1)
                 }
             }
@@ -1169,7 +1169,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = Ref.fresh(rc3, MutMap.empty(rc3));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(m));
+                    MutMap.put!(1, 1, Ref.get(m));
                     Array.get(0, Ref.get(a)) == 1 and MutList.pop!(Ref.get(l)) == Some(1) and MutMap.get(1, Ref.get(m)) == Some(1)
                 }
             }
@@ -1184,7 +1184,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = Ref.fresh(rc1, MutMap.empty(rc3));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(m));
+                    MutMap.put!(1, 1, Ref.get(m));
                     Array.get(0, Ref.get(a)) == 1 and MutList.pop!(Ref.get(l)) == Some(1) and MutMap.get(1, Ref.get(m)) == Some(1)
                 }
             }
@@ -1199,7 +1199,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m = Ref.fresh(rc3, MutMap.empty(rc3));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(m));
+                    MutMap.put!(1, 1, Ref.get(m));
                     Array.get(0, Ref.get(a)) == 1 and MutList.pop!(Ref.get(l)) == Some(1) and MutMap.get(1, Ref.get(m)) == Some(1)
                 }
             }
@@ -1225,7 +1225,7 @@ mod Test.Exp.Regions {
                 region _ {
                     let m = Ref.fresh(rc2, MutMap.empty(rc1));
                     MutList.push!(m, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(m));
+                    MutMap.put!(1, 1, Ref.get(m));
                     match MutList.pop!(Ref.get(l)) {
                         case Some(n) => MutMap.get(1, Ref.get(n)) == Some(1)
                         case _       => unreachable!()
@@ -1242,7 +1242,7 @@ mod Test.Exp.Regions {
                     let m: Ref[MutMap[Int32, Ref[MutList[Int32, rc3], rc3], rc2], rc2] = Ref.fresh(rc2, MutMap.empty(rc2));
                     let l = Ref.fresh(rc3, MutList.empty(rc3));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, l, Ref.get(m));
+                    MutMap.put!(1, l, Ref.get(m));
                     match MutMap.get(1, Ref.get(m)) {
                         case Some(k) => MutList.pop!(Ref.get(k)) == Some(1)
                         case _       => unreachable!()
@@ -1260,7 +1260,7 @@ mod Test.Exp.Regions {
                     let m = Ref.fresh(rc3, MutMap.empty(rc2));
                     let l = Ref.fresh(rc1, MutList.empty(rc3));
                     MutList.push!(1, Ref.get(l));
-                    MutMap.put(1, l, Ref.get(m));
+                    MutMap.put!(1, l, Ref.get(m));
                     Array.put(m, 0, Ref.get(a));
                     match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                         case Some(k) => MutList.pop!(Ref.get(k)) == Some(1)
@@ -1278,7 +1278,7 @@ mod Test.Exp.Regions {
                     let l: Ref[MutList[Ref[Array[Ref[MutMap[Int32, Int32, rc1], rc3], rc2], rc1], rc3], rc2] = Ref.fresh(rc2, MutList.empty(rc3));
                     let a = Ref.fresh(rc1, Array.repeat(rc2, 8, Ref.fresh(rc3, MutMap.empty(rc1))));
                     MutList.push!(a, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+                    MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
                     match MutList.pop!(Ref.get(l)) {
                         case Some(b) => MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) == Some(1)
                         case _       => unreachable!()
@@ -1294,7 +1294,7 @@ mod Test.Exp.Regions {
                 region rc3 {
                     let m: Ref[MutMap[Int32, Ref[MutList[Ref[Array[Int32, rc1], rc2], rc3], rc1], rc2], rc3] = Ref.fresh(rc3, MutMap.empty(rc2));
                     let l = Ref.fresh(rc1, MutList.empty(rc3));
-                    MutMap.put(1, l, Ref.get(m));
+                    MutMap.put!(1, l, Ref.get(m));
                     MutList.push!(Ref.fresh(rc2, Array.repeat(rc1, 8, 1)), Ref.get(l));
                     match MutMap.get(1, Ref.get(m)) {
                         case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr))) == Some(1)
@@ -1311,7 +1311,7 @@ mod Test.Exp.Regions {
                 let l: Ref[MutList[Ref[Array[Int32, rc1], rc1], _], _] = Ref.fresh(rc2, MutList.empty(rc1));
                 region rc3 {
                     let a: Ref[Array[Ref[MutMap[Int32, Ref[MutList[Ref[Array[Int32, rc1], rc1], rc1], rc2], rc2], rc3], rc3], rc1] = Ref.fresh(rc1, Array.repeat(rc3, 8, Ref.fresh(rc3, MutMap.empty(rc2))));
-                    MutMap.put(1, l, Ref.get(Array.get(0, Ref.get(a))));
+                    MutMap.put!(1, l, Ref.get(Array.get(0, Ref.get(a))));
                     MutList.push!(Ref.fresh(rc1, Array.repeat(rc1, 8, 1)), Ref.get(l));
                     match MutMap.get(1, Ref.get(Array.get(0, Ref.get(a)))) {
                         case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr))) == Some(1)
@@ -1330,7 +1330,7 @@ mod Test.Exp.Regions {
                     let a = Ref.fresh(rc1, Array.repeat(rc1, 8, Ref.fresh(rc3, MutMap.empty(rc3))));
                     let l2 = Ref.fresh(rc2, MutList.empty(rc2));
                     MutList.push!(a, Ref.get(l));
-                    MutMap.put(1, l2, Ref.get(Array.get(0, Ref.get(a))));
+                    MutMap.put!(1, l2, Ref.get(Array.get(0, Ref.get(a))));
                     MutList.push!(1, Ref.get(l2));
                     match MutList.pop!(Ref.get(l)) {
                         case Some(b) => match MutMap.get(1, Ref.get(Array.get(0, Ref.get(b)))) {
@@ -1351,9 +1351,9 @@ mod Test.Exp.Regions {
                     let m: Ref[MutMap[Int32, Ref[MutList[Ref[Array[Ref[MutMap[Int32, Int32, rc1], rc3], rc3], rc2], rc1], rc1], rc2], rc1] = Ref.fresh(rc1, MutMap.empty(rc2));
                     let l = Ref.fresh(rc1, MutList.empty(rc1));
                     let a = Ref.fresh(rc2, Array.repeat(rc3, 8, Ref.fresh(rc3, MutMap.empty(rc1))));
-                    MutMap.put(1, l, Ref.get(m));
+                    MutMap.put!(1, l, Ref.get(m));
                     MutList.push!(a, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(Array.get(0, Ref.get(a))));
+                    MutMap.put!(1, 1, Ref.get(Array.get(0, Ref.get(a))));
                     match MutMap.get(1, Ref.get(m)) {
                         case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr)))
                                                                    |> Option.flatMap(m1 -> MutMap.get(1, Ref.get(m1))) == Some(1)
@@ -1372,9 +1372,9 @@ mod Test.Exp.Regions {
                         Ref.fresh(rc3, Ref.fresh(rc2, Ref.fresh(rc3, Ref.fresh(rc1, MutMap.empty(rc2)))));
                     let l = Ref.fresh(rc1, MutList.empty(rc1));
                     let a = Ref.fresh(rc2, Array.repeat(rc3, 8, Ref.fresh(rc3, Ref.fresh(rc1, Ref.fresh(rc2, Ref.fresh(rc3, MutMap.empty(rc1)))))));
-                    MutMap.put(1, l, Ref.get(Ref.get(Ref.get(Ref.get(m)))));
+                    MutMap.put!(1, l, Ref.get(Ref.get(Ref.get(Ref.get(m)))));
                     MutList.push!(a, Ref.get(l));
-                    MutMap.put(1, 1, Ref.get(Ref.get(Ref.get(Ref.get(Array.get(0, Ref.get(a)))))));
+                    MutMap.put!(1, 1, Ref.get(Ref.get(Ref.get(Ref.get(Array.get(0, Ref.get(a)))))));
                     match MutMap.get(1, Ref.get(Ref.get(Ref.get(Ref.get(m)))))                    {
                         case Some(k) => MutList.nth(0, Ref.get(k)) |> Option.flatMap(arr -> Array.nth(0, Ref.get(arr)))
                                                                    |> Option.flatMap(m1 -> MutMap.get(1, Ref.get(Ref.get(Ref.get(Ref.get(m1)))))) == Some(1)

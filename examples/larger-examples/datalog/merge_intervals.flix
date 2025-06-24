@@ -9,12 +9,12 @@ def merge(intervals: List[(Int32, Int32)]): Vector[(Int32, Int32)] =
         // [a, ..., c, ..., b, ..., d]
         Interval(a, d) :-
             Interval(a, b), Interval(c, d),
-            if a <= c and c <= b and b <= d.
+            if (a <= c and c <= b and b <= d).
 
         // [a, ..., c, ..., d, ..., b]
         IsContained(c, d) :-
             Interval(a, b), Interval(c, d),
-            if (a <= c and d < b) or (a < c and d <= b).
+            if ((a <= c and d < b) or (a < c and d <= b)).
 
         Representative(a, b):- Interval(a, b), not IsContained(a, b).
     };

@@ -184,26 +184,26 @@ mod TestIterable {
 
 
     /////////////////////////////////////////////////////////////////////////////
-    // MutPriorityQueue instance                                               //
+    // MutQueue instance                                                       //
     /////////////////////////////////////////////////////////////////////////////
 
     @test
-    def iterableMutPriorityQueue01(): Bool = region rc {
-        let mq : MutPriorityQueue[Int32, rc] = MutPriorityQueue.empty(rc);
+    def iterableMutQueue01(): Bool = region rc {
+        let mq : MutQueue[Int32, rc] = MutQueue.empty(rc);
         Iterable.iterator(rc, mq) |> Iterator.toList == Nil
     }
 
     @test
-    def iterableMutPriorityQueue02(): Bool = region rc {
-        let mq = MutPriorityQueue.empty(rc);
-        MutPriorityQueue.enqueueAll(List#{2, 5, 11, 8}, mq);
+    def iterableMutQueue02(): Bool = region rc {
+        let mq = MutQueue.empty(rc);
+        MutQueue.enqueueAll(mq, List#{2, 5, 11, 8});
         Iterable.iterator(rc, mq) |> Iterator.toList == List#{11, 8, 5, 2}
     }
 
     @test
-    def iterableMutPriorityQueue03(): Bool = region rc {
-        let mq = MutPriorityQueue.empty(rc);
-        MutPriorityQueue.enqueueAll(List#{'A', 'B', 'D', 'C'}, mq);
+    def iterableMutQueue03(): Bool = region rc {
+        let mq = MutQueue.empty(rc);
+        MutQueue.enqueueAll(mq, List#{'A', 'B', 'D', 'C'});
         Iterable.iterator(rc, mq) |> Iterator.toList == List#{'D', 'C', 'B', 'A'}
     }
 
