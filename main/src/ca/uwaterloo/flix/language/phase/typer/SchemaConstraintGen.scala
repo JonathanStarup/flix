@@ -25,7 +25,7 @@ import ca.uwaterloo.flix.language.phase.util.PredefinedTraits
 
 object SchemaConstraintGen {
 
-  def visitFixpointConstraintSet(e: KindedAst.Expr.FixpointConstraintSet)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointConstraintSet(e: KindedAst.Expr.FixpointConstraintSet)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointConstraintSet(cs, tvar, loc) =>
@@ -39,7 +39,7 @@ object SchemaConstraintGen {
     }
   }
 
-  def visitFixpointLambda(e: KindedAst.Expr.FixpointLambda)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointLambda(e: KindedAst.Expr.FixpointLambda)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointLambda(pparams, exp, tvar, loc) =>
@@ -62,7 +62,7 @@ object SchemaConstraintGen {
     }
   }
 
-  def visitFixpointMerge(e: KindedAst.Expr.FixpointMerge)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointMerge(e: KindedAst.Expr.FixpointMerge)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointMerge(exp1, exp2, loc) =>
@@ -80,7 +80,7 @@ object SchemaConstraintGen {
     }
   }
 
-  def visitFixpointSolve(e: KindedAst.Expr.FixpointSolve)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointSolve(e: KindedAst.Expr.FixpointSolve)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointSolve(exp, loc) =>
@@ -98,7 +98,7 @@ object SchemaConstraintGen {
   }
 
 
-  def visitFixpointFilter(e: KindedAst.Expr.FixpointFilter)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointFilter(e: KindedAst.Expr.FixpointFilter)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointFilter(pred, exp, tvar, loc) =>
@@ -120,7 +120,7 @@ object SchemaConstraintGen {
     }
   }
 
-  def visitFixpointInject(e: KindedAst.Expr.FixpointInject)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointInject(e: KindedAst.Expr.FixpointInject)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointInject(exp, pred, arity, tvar, evar, loc) =>
@@ -155,7 +155,7 @@ object SchemaConstraintGen {
     }
   }
 
-  def visitFixpointProject(e: KindedAst.Expr.FixpointProject)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitFixpointProject(e: KindedAst.Expr.FixpointProject)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     e match {
       case KindedAst.Expr.FixpointProject(pred, arity, exp1, exp2, tvar, loc) =>
@@ -181,7 +181,7 @@ object SchemaConstraintGen {
     }
   }
 
-  private def visitConstraint(con0: KindedAst.Constraint)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
+  private def visitConstraint(con0: KindedAst.Constraint)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
     implicit val scope: Scope = c.getScope
     val KindedAst.Constraint(_, head0, body0, loc) = con0
     //
@@ -202,7 +202,7 @@ object SchemaConstraintGen {
   /**
     * Infers the type of the given head predicate.
     */
-  private def visitHeadPredicate(head: KindedAst.Predicate.Head)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
+  private def visitHeadPredicate(head: KindedAst.Predicate.Head)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
     implicit val scope: Scope = c.getScope
     head match {
       case KindedAst.Predicate.Head.Atom(pred, den, terms, tvar, loc) =>
@@ -221,7 +221,7 @@ object SchemaConstraintGen {
   /**
     * Infers the type of the given body predicate.
     */
-  private def visitBodyPredicate(body0: KindedAst.Predicate.Body)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
+  private def visitBodyPredicate(body0: KindedAst.Predicate.Body)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
     implicit val scope: Scope = c.getScope
     body0 match {
       case KindedAst.Predicate.Body.Atom(pred, den, _, _, terms, tvar, loc) =>

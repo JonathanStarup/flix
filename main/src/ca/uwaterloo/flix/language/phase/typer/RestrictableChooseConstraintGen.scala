@@ -70,7 +70,7 @@ object RestrictableChooseConstraintGen {
   /**
     * Performs type inference on the given restrictable choose expression.
     */
-  def visitRestrictableChoose(exp: KindedAst.Expr.RestrictableChoose)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitRestrictableChoose(exp: KindedAst.Expr.RestrictableChoose)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
 
     exp match {
@@ -190,7 +190,7 @@ object RestrictableChooseConstraintGen {
   /**
     * Performs type inference on the given restrictable tag expression.
     */
-  def visitApplyRestrictableTag(exp: KindedAst.Expr.RestrictableTag)(implicit scope: Scope, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitApplyRestrictableTag(exp: KindedAst.Expr.RestrictableTag)(implicit declSym: Symbol, scope: Scope, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     exp match {
       case KindedAst.Expr.RestrictableTag(symUse, exps, isOpen, tvar, evar, loc) =>
 
@@ -267,7 +267,7 @@ object RestrictableChooseConstraintGen {
     * -------------------------------------
     * Γ ⊢ open_as X e : X[s + φ][α1 ... αn]
     */
-  def visitOpenAs(exp0: KindedAst.Expr.OpenAs)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitOpenAs(exp0: KindedAst.Expr.OpenAs)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     exp0 match {
       case KindedAst.Expr.OpenAs(RestrictableEnumSymUse(sym, _), exp, tvar, loc) =>

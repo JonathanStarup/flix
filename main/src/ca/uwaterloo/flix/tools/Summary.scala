@@ -408,9 +408,9 @@ object Summary {
       format(polyDefs),
       format(checkedEcasts),
       format(baseEffVars),
-      formatSigned(lambdaSubEffVars),
       formatSigned(modDefSubEffVars),
-      formatSigned(insDefSubEffVars)
+      formatSigned(insDefSubEffVars),
+      formatSigned(lambdaSubEffVars)
     )
   }
 
