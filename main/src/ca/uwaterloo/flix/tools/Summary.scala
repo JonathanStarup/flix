@@ -20,9 +20,16 @@ import ca.uwaterloo.flix.language.ast.shared.{CheckedCastType, Input, SecurityCo
 import ca.uwaterloo.flix.language.ast.{SourceLocation, SourcePosition, Symbol, Type, TypeConstructor, TypedAst}
 import ca.uwaterloo.flix.util.InternalCompilerException
 
+
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 
 object Summary {
+
+  val totalEffVarsTracker: ConcurrentHashMap[Symbol, Int] = new ConcurrentHashMap
+  val lambdaSubEffVarsTracker: ConcurrentHashMap[Symbol, Int] = new ConcurrentHashMap
+  val modDefSubEffVarsTracker: ConcurrentHashMap[Symbol, Int] = new ConcurrentHashMap
+  val insDefSubEffVarsTracker: ConcurrentHashMap[Symbol, Int] = new ConcurrentHashMap
 
   /**
     * Returns a table of the file data of the root
@@ -58,15 +65,24 @@ object Summary {
     table
   }
 
+  def defSummaryTable(root: Root): Table = {
+    val sums = defSummaries(root)
+    val table = new Table()
+    table.addRow(DefSummary.header)
+    sums.sortBy(-_.baseEffVars).map(_.toRow).foreach(table.addRow)
+    table
+  }
+
   /** Returns a function summary for a def or an instance, depending on the flag */
   private def defSummary(defn: TypedAst.Def, isInstance: Boolean): DefSummary = {
     val fun = if (isInstance) FunctionSym.InstanceFun(defn.sym) else FunctionSym.Def(defn.sym)
     val eff = resEffect(defn.spec.eff)
     val ecasts = countCheckedEcasts(defn.exp)
-    val baseEffVars = -1
-    val lambdaSubEffVars = -1
-    val modDefSubEffVars = -1
-    val insDefSubEffVars = -1
+    val totalEffVars = totalEffVarsTracker.get(defn.sym)
+    val modDefSubEffVars = modDefSubEffVarsTracker.get(defn.sym)
+    val insDefSubEffVars = insDefSubEffVarsTracker.get(defn.sym)
+    val lambdaSubEffVars = lambdaSubEffVarsTracker.get(defn.sym)
+    val baseEffVars = totalEffVars - modDefSubEffVars - insDefSubEffVars - lambdaSubEffVars
     DefSummary(fun, eff, ecasts, baseEffVars, modDefSubEffVars, insDefSubEffVars, lambdaSubEffVars)
   }
 
@@ -77,10 +93,11 @@ object Summary {
       val fun = FunctionSym.TraitFunWithExp(sig.sym)
       val eff = resEffect(sig.spec.eff)
       val ecasts = countCheckedEcasts(exp)
-      val baseEffVars = -1
-      val lambdaSubEffVars = -1
-      val modDefSubEffVars = -1
-      val insDefSubEffVars = -1
+      val totalEffVars = totalEffVarsTracker.get(sig.sym)
+      val modDefSubEffVars = modDefSubEffVarsTracker.get(sig.sym)
+      val insDefSubEffVars = insDefSubEffVarsTracker.get(sig.sym)
+      val lambdaSubEffVars = lambdaSubEffVarsTracker.get(sig.sym)
+      val baseEffVars = totalEffVars - modDefSubEffVars - insDefSubEffVars - lambdaSubEffVars
       Some(DefSummary(fun, eff, ecasts, baseEffVars, modDefSubEffVars, insDefSubEffVars, lambdaSubEffVars))
   }
 
@@ -453,9 +470,9 @@ object Summary {
       eff.toString,
       format(checkedEcasts),
       format(baseEffVars),
-      formatSigned(lambdaSubEffVars),
       formatSigned(modDefSubEffVars),
-      formatSigned(insDefSubEffVars)
+      formatSigned (insDefSubEffVars),
+      formatSigned(lambdaSubEffVars)
     )
   }
 
@@ -465,9 +482,9 @@ object Summary {
       "Eff",
       "checked_ecast",
       "Baseline EVars",
-      "SE-Lam EVars",
-      "SE-Defs EVars",
-      "SE-Inst EVars"
+      "SE-Def EVars",
+      "SE-Ins EVars",
+      "SE-Lam EVars"
     )
   }
 
