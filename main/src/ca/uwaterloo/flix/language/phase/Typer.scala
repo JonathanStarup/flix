@@ -22,6 +22,7 @@ import ca.uwaterloo.flix.language.dbg.AstPrinter.*
 import ca.uwaterloo.flix.language.errors.TypeError
 import ca.uwaterloo.flix.language.phase.typer.{ConstraintGen, ConstraintSolver, InfResult, TypeContext}
 import ca.uwaterloo.flix.language.phase.unification.{Substitution, TraitEnv}
+import ca.uwaterloo.flix.tools.Summary
 import ca.uwaterloo.flix.util.*
 import ca.uwaterloo.flix.util.Validation.{mapN, traverse}
 import ca.uwaterloo.flix.util.collection.ListMap
@@ -164,7 +165,7 @@ object Typer {
       mapN(ParOps.parTraverseValues(staleDefs) {
         case defn =>
           // SUB-EFFECTING: Check if sub-effecting is enabled for module-level defs.
-          val enableSubeffects = shouldSubeffect(defn.exp, defn.spec.eff, Subeffecting.ModDefs)
+          val enableSubeffects = shouldSubeffect(defn.sym, defn.exp, defn.spec.eff, Subeffecting.ModDefs)
           visitDef(defn, tconstrs0 = Nil, RigidityEnv.empty, root, traitEnv, eqEnv, enableSubeffects)
       })(_ ++ freshDefs)
     }
@@ -176,6 +177,7 @@ object Typer {
     implicit val scope: Scope = Scope.Top
     implicit val r: KindedAst.Root = root
     implicit val context: TypeContext = new TypeContext
+    implicit val declSym: Symbol = defn.sym
     val (tpe, eff0) = ConstraintGen.visitExp(defn.exp)
     val infRenv = context.getRigidityEnv
     val infTconstrs = context.getTypeConstraints
@@ -229,6 +231,7 @@ object Typer {
     implicit val scope: Scope = Scope.Top
     implicit val r: KindedAst.Root = root
     implicit val context: TypeContext = new TypeContext
+    implicit val declSym: Symbol = sig.sym
     sig.exp match {
       case None => Validation.success(TypeReconstruction.visitSig(sig, Substitution.empty))
       case Some(exp) =>
@@ -238,7 +241,7 @@ object Typer {
 
         // SUB-EFFECTING: Check if sub-effecting is enabled for module-level defs. Note: We consider signatures implemented in traits to be module-level.
         // A small optimization: If the signature is pure there is no room for subeffecting.
-        val open = shouldSubeffect(exp, sig.spec.eff, Subeffecting.ModDefs)
+        val open = shouldSubeffect(sig.sym, exp, sig.spec.eff, Subeffecting.ModDefs)
         val eff = if (open) Type.mkUnion(eff0, Type.freshVar(Kind.Eff, eff0.loc), eff0.loc) else eff0
 
         val infResult = InfResult(constrs, tpe, eff, renv)
@@ -286,7 +289,7 @@ object Typer {
 
       val defsVal = Validation.traverse(defs0)(defn => {
         // SUB-EFFECTING: Check if sub-effecting is enabled for instance-level defs.
-        val open = shouldSubeffect(defn.exp, defn.spec.eff, Subeffecting.InsDefs)
+        val open = shouldSubeffect(defn.sym, defn.exp, defn.spec.eff, Subeffecting.InsDefs)
         visitDef(defn, tconstrs, renv, root, traitEnv, eqEnv, open)
       })
       mapN(defsVal) {
@@ -463,12 +466,17 @@ object Typer {
     * Returns `true` if if `subeffecting` is enabled by [[Flix]] and it is not redundant for a
     * function with `body` and `eff`.
     */
-  private def shouldSubeffect(body: KindedAst.Expr, eff: Type, subeffecting: Subeffecting)(implicit flix: Flix): Boolean = {
+  private def shouldSubeffect(declSym: Symbol, body: KindedAst.Expr, eff: Type, subeffecting: Subeffecting)(implicit flix: Flix): Boolean = {
     val enabled = flix.options.xsubeffecting.contains(subeffecting)
     val useless = eff == Type.Pure
     val redundant = body match {
       case KindedAst.Expr.CheckedCast(CheckedCastType.EffectCast, _, _, _, _) => true
       case _ => false
+    }
+    if (enabled && !useless) subeffecting match {
+      case Subeffecting.ModDefs => Summary.modDefSubEffVarsTracker.compute(declSym, (_, i) => i + 1)
+      case Subeffecting.InsDefs => Summary.insDefSubEffVarsTracker.compute(declSym, (_, i) => i + 1)
+      case Subeffecting.Lambdas => ??? // unreachable
     }
     enabled && !useless && !redundant
   }

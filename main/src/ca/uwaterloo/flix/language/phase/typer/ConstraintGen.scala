@@ -22,6 +22,7 @@ import ca.uwaterloo.flix.language.ast.shared.{CheckedCastType, Scope}
 import ca.uwaterloo.flix.language.ast.{Ast, Kind, KindedAst, Name, Scheme, SemanticOp, SourceLocation, Symbol, Type, TypeConstructor}
 import ca.uwaterloo.flix.util.{InternalCompilerException, Subeffecting}
 import ca.uwaterloo.flix.language.phase.unification.Substitution
+import ca.uwaterloo.flix.tools.Summary
 
 /**
   * This phase generates a list of type constraints, which include
@@ -40,7 +41,7 @@ object ConstraintGen {
     * Returns the type of the expression and its effect.
     * The type and effect may include variables that must be resolved.
     */
-  def visitExp(exp0: KindedAst.Expr)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  def visitExp(exp0: KindedAst.Expr)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     exp0 match {
       case Expr.Var(sym, _) =>
@@ -146,6 +147,7 @@ object ConstraintGen {
             case Expr.CheckedCast(CheckedCastType.EffectCast, _, _, _, _) => true
             case _ => false
           }
+          if (enabled && allowSubeffecting && !useless) Summary.lambdaSubEffVarsTracker.compute(declSym, (_, i) => i + 1)
           enabled && allowSubeffecting && !useless && !redundant
         }
         val eff = if (shouldSubeffect) Type.mkUnion(eff0, Type.freshVar(Kind.Eff, loc), loc) else eff0
@@ -392,6 +394,7 @@ object ConstraintGen {
             case Expr.CheckedCast(CheckedCastType.EffectCast, _, _, _, _) => true
             case _ => false
           }
+          if (enabled && !useless) Summary.lambdaSubEffVarsTracker.compute(declSym, (_, i) => i + 1)
           enabled && !useless && !redundant
         }
         val defEff = if (shouldSubeffect) Type.mkUnion(eff1, Type.freshVar(Kind.Eff, loc), loc) else eff1
@@ -1066,7 +1069,7 @@ object ConstraintGen {
     *
     * Returns the pattern type, the body's type, and the body's effect
     */
-  private def visitMatchRule(rule: KindedAst.MatchRule)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type, Type) = rule match {
+  private def visitMatchRule(rule: KindedAst.MatchRule)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type, Type) = rule match {
     case KindedAst.MatchRule(pat, guard, exp) =>
       val patTpe = visitPattern(pat)
       guard.foreach {
@@ -1084,7 +1087,7 @@ object ConstraintGen {
     *
     * Returns the the body's type and the body's effect
     */
-  private def visitTypeMatchRule(rule: KindedAst.TypeMatchRule)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
+  private def visitTypeMatchRule(rule: KindedAst.TypeMatchRule)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
     case KindedAst.TypeMatchRule(sym, declTpe, exp) =>
       // We mark all the type vars in the declared type as rigid.
       // This ensures we get a substitution from the actual type to the declared type.
@@ -1104,7 +1107,7 @@ object ConstraintGen {
     *
     * Returns the the body's type and the body's effect
     */
-  private def visitCatchRule(rule: KindedAst.CatchRule)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
+  private def visitCatchRule(rule: KindedAst.CatchRule)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
     case KindedAst.CatchRule(sym, clazz, exp) =>
       c.expectType(expected = Type.mkNative(clazz, sym.loc), sym.tvar, sym.loc)
       visitExp(exp)
@@ -1126,7 +1129,7 @@ object ConstraintGen {
     * @param tryBlockTpe        the type of the try-block associated with the handler
     * @param continuationEffect the effect of the continuation
     */
-  private def visitHandlerRule(rule: KindedAst.HandlerRule, tryBlockTpe: Type, continuationEffect: Type, loc: SourceLocation)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
+  private def visitHandlerRule(rule: KindedAst.HandlerRule, tryBlockTpe: Type, continuationEffect: Type, loc: SourceLocation)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = rule match {
     case KindedAst.HandlerRule(op, actualFparams0, body, opTvar) =>
       val effect = root.effects(op.sym.eff)
       val ops = effect.ops.map(op => op.sym -> op).toMap
@@ -1153,7 +1156,7 @@ object ConstraintGen {
   /**
     * Generates constraints for the JVM method.
     */
-  private def visitJvmMethod(method: KindedAst.JvmMethod)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Unit = method match {
+  private def visitJvmMethod(method: KindedAst.JvmMethod)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Unit = method match {
     case KindedAst.JvmMethod(_, fparams, exp, returnTpe, eff, _) =>
 
       /**
@@ -1175,7 +1178,7 @@ object ConstraintGen {
     *
     * Returns the type and effect of the rule.
     */
-  private def visitSelectRule(sr0: KindedAst.SelectChannelRule, regionVar: Type)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  private def visitSelectRule(sr0: KindedAst.SelectChannelRule, regionVar: Type)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     sr0 match {
       case KindedAst.SelectChannelRule(sym, chan, body) =>
         val (chanType, eff1) = visitExp(chan)
@@ -1192,7 +1195,7 @@ object ConstraintGen {
     *
     * Returns the type and effect of the rule body.
     */
-  private def visitDefaultRule(exp0: Option[KindedAst.Expr], loc: SourceLocation)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
+  private def visitDefaultRule(exp0: Option[KindedAst.Expr], loc: SourceLocation)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): (Type, Type) = {
     implicit val scope: Scope = c.getScope
     exp0 match {
       case None => (Type.freshVar(Kind.Star, loc), Type.Pure)
@@ -1205,7 +1208,7 @@ object ConstraintGen {
     *
     * The number of arguments must match the number of parameters (this check is done in Resolver).
     */
-  private def visitOpArgs(op: KindedAst.Op, args: List[KindedAst.Expr])(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): List[Type] = {
+  private def visitOpArgs(op: KindedAst.Op, args: List[KindedAst.Expr])(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): List[Type] = {
     (args zip op.spec.fparams) map {
       case (arg, fparam) => visitOpArg(arg, fparam)
     }
@@ -1216,7 +1219,7 @@ object ConstraintGen {
     *
     * Returns the effect of the argument.
     */
-  private def visitOpArg(arg: KindedAst.Expr, fparam: KindedAst.FormalParam)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
+  private def visitOpArg(arg: KindedAst.Expr, fparam: KindedAst.FormalParam)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Type = {
     val (tpe, eff) = visitExp(arg)
     c.expectType(expected = fparam.tpe, actual = tpe, arg.loc)
     eff
@@ -1225,7 +1228,7 @@ object ConstraintGen {
   /**
     * Generates constraints for the given ParYieldFragment.
     */
-  private def visitParYieldFragment(frag: KindedAst.ParYieldFragment)(implicit c: TypeContext, root: KindedAst.Root, flix: Flix): Unit = frag match {
+  private def visitParYieldFragment(frag: KindedAst.ParYieldFragment)(implicit declSym: Symbol, c: TypeContext, root: KindedAst.Root, flix: Flix): Unit = frag match {
     case KindedAst.ParYieldFragment(pat, exp, loc) =>
       val patTpe = visitPattern(pat)
       val (tpe, eff) = visitExp(exp)
