@@ -1,6 +1,16 @@
-
-
 # THIS IS BASED ON 76b7eb24669cfcb7b42f2155ab6da8fd19fa8bfe
+
+# Data
+
+|          | Paper   | %    | Artifact | %    |
+| -------- | ------- | ---- | -------- | ---- |
+| Baseline | 107,799 | -    | 107,864  | -    |
+| Def      | 103,145 | 1.05 | 105,618  | 1.02 |
+| Ins      | 106,882 | 1.01 | 107,507  | 1.00 |
+| Lam      | 91,457  | 1.18 | 104,232  | 1.03 |
+
+
+# Readme
 
 <p align="center" >
     <img src="https://raw.githubusercontent.com/flix/flix/master/docs/logo.png" height="91px" 
