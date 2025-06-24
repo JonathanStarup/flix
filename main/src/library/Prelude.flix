@@ -97,16 +97,6 @@ pub eff Sys
 pub def identity(x: a): a = x
 
 ///
-/// The identity function, automatically casting to the required effect.
-///
-pub def eidentity(x: a): a \ ef = checked_ecast(x)
-
-///
-/// The constant function.
-///
-pub def constant(x: a): b -> a \ ef = _ -> checked_ecast(x)
-
-///
 /// Returns the function `f` with input arguments swapped.
 /// That is, given the function `f: (a, b) -> c`, returns a function `(b, a) -> c`
 ///
@@ -178,11 +168,6 @@ pub def coerce(x: t): Coerce.Out[t] with Coerce[t] = Coerce.coerce(x)
 ///
 pub def println(x: a): Unit \ IO with ToString[a] =
     System.out.println(x |> ToString.toString)
-
-///
-/// Touches the given region capability `rc`.
-///
-pub def touch(_: Region[r]): Unit \ r = checked_ecast(())
 
 ///
 /// Crashes the current process with the given message `m`.
