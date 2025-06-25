@@ -411,10 +411,10 @@ object Main {
     }
 
     implicit val readSubEffectLevel: scopt.Read[Subeffecting] = scopt.Read.reads {
-      case "mod-defs" => Subeffecting.ModDefs
-      case "ins-defs" => Subeffecting.InsDefs
-      case "lambdas" => Subeffecting.Lambdas
-      case arg => throw new IllegalArgumentException(s"'$arg' is not a valid subeffecting option. Valid options are comma-separated combinations of 'mod-defs', 'ins-defs', and 'lambdas'.")
+      case "se-def" => Subeffecting.ModDefs
+      case "se-ins" => Subeffecting.InsDefs
+      case "se-lam" => Subeffecting.Lambdas
+      case arg => throw new IllegalArgumentException(s"'$arg' is not a valid subeffecting option. Valid options are comma-separated combinations of 'se-def', 'se-ins', and 'se-lam'.")
     }
 
     val parser = new scopt.OptionParser[CmdOpts]("flix") {
