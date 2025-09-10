@@ -46,7 +46,7 @@ import scala.jdk.CollectionConverters.*
   *   - Check that all entry points have valid signatures, where rules differ from main, tests, and
   *     exports. If an entrypoint does not have a valid signature, its related annotation is
   *     removed to allow further compilation to continue with valid assumptions.
-  *   -
+  *   - Replace test functions by new functions that add default test handlers.
   *   - Replace the existing main function by a new main function that prints the returned value if
   *     its return type is not Unit.
   *   - Compute the set of all entry points and store it in Root.
