@@ -57,7 +57,7 @@ object EffectBinder {
     val newEnums = ParOps.parMapValues(root.enums)(visitEnum)
     val newStructs = ParOps.parMapValues(root.structs)(visitStruct)
     val newEffects = ParOps.parMapValues(root.effects)(visitEffect)
-    ReducedAst.Root(newDefs, newEnums, newStructs, newEffects, Set.empty, Nil, root.mainEntryPoint, root.entryPoints, root.sources)
+    ReducedAst.Root(newDefs, newEnums, Map.empty, newStructs, Map.empty, newEffects, Set.empty, Nil, root.mainEntryPoint, root.entryPoints, root.sources)
   }
 
   private sealed trait Binder

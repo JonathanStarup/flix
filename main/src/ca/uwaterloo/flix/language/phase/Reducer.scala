@@ -18,9 +18,9 @@ package ca.uwaterloo.flix.language.phase
 import ca.uwaterloo.flix.api.Flix
 import ca.uwaterloo.flix.language.ast.ReducedAst.*
 import ca.uwaterloo.flix.language.ast.shared.ExpPosition
-import ca.uwaterloo.flix.language.ast.{Purity, SimpleType, Symbol}
+import ca.uwaterloo.flix.language.ast.{Purity, SimpleType, SourceLocation, Symbol}
 import ca.uwaterloo.flix.language.dbg.AstPrinter.*
-import ca.uwaterloo.flix.util.ParOps
+import ca.uwaterloo.flix.util.{InternalCompilerException, ParOps}
 
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 import scala.annotation.tailrec
@@ -39,6 +39,8 @@ import scala.jdk.CollectionConverters.*
 object Reducer {
 
   def run(root: Root)(implicit flix: Flix): Root = flix.phase("Reducer") {
+    assert(root.enums.isEmpty)
+    assert(root.structs.isEmpty)
     implicit val ctx: SharedContext = SharedContext(new ConcurrentLinkedQueue, new ConcurrentHashMap())
 
     val newDefs = ParOps.parMapValues(root.defs)(visitDef(_)(root, ctx))
@@ -255,11 +257,13 @@ object Reducer {
           case Array(elm) => taskList.enqueue(elm)
           case Lazy(elm) => taskList.enqueue(elm)
           case Tuple(elms) => taskList.enqueueAll(elms)
-          case Enum(_, targs) => taskList.enqueueAll(targs)
-          case Struct(_, targs) => taskList.enqueueAll(targs)
+          case MonoEnum(_) => taskList
+          case MonoStruct(_) => taskList
           case Arrow(targs, tresult) => taskList.enqueueAll(targs).enqueue(tresult)
           case RecordExtend(_, value, rest) => taskList.enqueue(value).enqueue(rest)
           case ExtensibleExtend(_, targs, rest) => taskList.enqueueAll(targs).enqueue(rest)
+          case Enum(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
+          case Struct(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
         }
         nestedTypesOf(acc + tpe, taskList1)
       case None => acc

@@ -27,6 +27,8 @@ object JvmBackend {
 
   /** Emits JVM bytecode for `root`. */
   def run(root: Root)(implicit flix: Flix): BytecodeAst.Root = flix.phase("JvmBackend") {
+    assert(root.enums.isEmpty)
+    assert(root.structs.isEmpty)
     implicit val r: Root = root
 
     // Types/classes required for Flix runtime.
@@ -63,11 +65,11 @@ object JvmBackend {
     }.map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
 
     val taggedAbstractClass = List(JvmClass(BackendObjType.Tagged.jvmName, BackendObjType.Tagged.genByteCode()))
-    val tagClasses = JvmOps.getErasedTagTypesOf(allTypes).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
+    val tagClasses = JvmOps.getTagTypesOf(root.monoEnums).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
     val extensibleTagClasses = JvmOps.getExtensibleTagTypesOf(allTypes).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
 
     val tupleClasses = JvmOps.getTupleTypesOf(allTypes).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
-    val structClasses = JvmOps.getErasedStructTypesOf(root, allTypes).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
+    val structClasses = JvmOps.getStructTypesOf(root.monoStructs).map(bt => JvmClass(bt.jvmName, bt.genByteCode())).toList
 
     val recordInterfaces = List(JvmClass(BackendObjType.Record.jvmName, BackendObjType.Record.genByteCode()))
     val recordEmptyClasses = List(JvmClass(BackendObjType.RecordEmpty.jvmName, BackendObjType.RecordEmpty.genByteCode()))

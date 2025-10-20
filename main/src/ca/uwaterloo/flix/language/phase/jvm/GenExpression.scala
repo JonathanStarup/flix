@@ -588,23 +588,17 @@ object GenExpression {
 
       case AtomicOp.Is(sym) =>
         val List(exp) = exps
-        val SimpleType.Enum(_, targs) = exp.tpe
-        val cases = JvmOps.instantiateEnum(root.enums(sym.enumSym), targs)
-        val termTypes = cases(sym)
+        val termTypes = root.monoEnums(sym.enumSym).cases(sym).tpes.map(BackendType.toBackendType)
         compileIsTag(sym.name, exp, termTypes)
 
       case AtomicOp.Tag(sym) =>
-        val SimpleType.Enum(_, targs) = tpe
-        val cases = JvmOps.instantiateEnum(root.enums(sym.enumSym), targs)
-        val termTypes = cases(sym)
+        val termTypes = root.monoEnums(sym.enumSym).cases(sym).tpes.map(BackendType.toBackendType)
         compileTag(sym.name, exps, termTypes)
 
       case AtomicOp.Untag(sym, idx) =>
         import BytecodeInstructions.*
         val List(exp) = exps
-        val SimpleType.Enum(_, targs) = exp.tpe
-        val cases = JvmOps.instantiateEnum(root.enums(sym.enumSym), targs)
-        val termTypes = cases(sym)
+        val termTypes = root.monoEnums(sym.enumSym).cases(sym).tpes.map(BackendType.toBackendType)
 
         compileUntag(exp, idx, termTypes)
         castIfNotPrim(BackendType.toBackendType(tpe))
@@ -740,12 +734,11 @@ object GenExpression {
         compileExpr(exp)
         ARRAYLENGTH()
 
-      case AtomicOp.StructNew(_, _) =>
+      case AtomicOp.StructNew(sym, _) =>
         import BytecodeInstructions.*
 
         val region :: fieldExps = exps
-        val SimpleType.Struct(sym, targs) = tpe
-        val structType = BackendObjType.Struct(JvmOps.instantiateStruct(sym, targs))
+        val structType = BackendObjType.Struct(root.monoStructs(sym).fields.map(field => BackendType.toBackendType(field.tpe)))
 
         // Evaluate the region and ignore its value
         compileExpr(region)
@@ -760,8 +753,7 @@ object GenExpression {
 
         val List(exp) = exps
         val idx = root.structs(field.structSym).fields.indexWhere(_.sym == field)
-        val SimpleType.Struct(sym, targs) = exp.tpe
-        val structType = BackendObjType.Struct(JvmOps.instantiateStruct(sym, targs))
+        val structType = BackendObjType.Struct(root.monoStructs(field.structSym).fields.map(field => BackendType.toBackendType(field.tpe)))
 
         compileExpr(exp)
         GETFIELD(structType.IndexField(idx))
@@ -771,8 +763,7 @@ object GenExpression {
 
         val List(exp1, exp2) = exps
         val idx = root.structs(field.structSym).fields.indexWhere(_.sym == field)
-        val SimpleType.Struct(sym, targs) = exp1.tpe
-        val structType = BackendObjType.Struct(JvmOps.instantiateStruct(sym, targs))
+        val structType = BackendObjType.Struct(root.monoStructs(field.structSym).fields.map(field => BackendType.toBackendType(field.tpe)))
 
         compileExpr(exp1)
         compileExpr(exp2)

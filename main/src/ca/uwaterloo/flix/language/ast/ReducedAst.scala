@@ -24,11 +24,13 @@ import java.lang.reflect.Method
 
 object ReducedAst {
 
-  val empty: Root = Root(Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, List.empty, None, Set.empty, Map.empty)
+  val empty: Root = Root(Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, List.empty, None, Set.empty, Map.empty)
 
   case class Root(defs: Map[Symbol.DefnSym, Def],
                   enums: Map[Symbol.EnumSym, Enum],
+                  monoEnums: Map[Symbol.EnumSym, MonoEnum],
                   structs: Map[Symbol.StructSym, Struct],
+                  monoStructs: Map[Symbol.StructSym, MonoStruct],
                   effects: Map[Symbol.EffSym, Effect],
                   types: Set[SimpleType],
                   anonClasses: List[AnonClass],
@@ -52,7 +54,11 @@ object ReducedAst {
 
   case class Enum(ann: Annotations, mod: Modifiers, sym: Symbol.EnumSym, tparams: List[TypeParam], cases: Map[Symbol.CaseSym, Case], loc: SourceLocation)
 
+  case class MonoEnum(ann: Annotations, mod: Modifiers, sym: Symbol.EnumSym, cases: Map[Symbol.CaseSym, MonoCase], loc: SourceLocation)
+
   case class Struct(ann: Annotations, mod: Modifiers, sym: Symbol.StructSym, tparams: List[TypeParam], fields: List[StructField], loc: SourceLocation)
+
+  case class MonoStruct(ann: Annotations, mod: Modifiers, sym: Symbol.StructSym, fields: List[MonoStructField], loc: SourceLocation)
 
   case class Effect(ann: Annotations, mod: Modifiers, sym: Symbol.EffSym, ops: List[Op], loc: SourceLocation)
 
@@ -118,8 +124,12 @@ object ReducedAst {
   /** [[Type]] is used here because [[Enum]] declarations are not monomorphized. */
   case class Case(sym: Symbol.CaseSym, tpes: List[Type], loc: SourceLocation)
 
+  case class MonoCase(sym: Symbol.CaseSym, tpes: List[SimpleType], loc: SourceLocation)
+
   /** [[Type]] is used here because [[Struct]] declarations are not monomorphized. */
   case class StructField(sym: Symbol.StructFieldSym, tpe: Type, loc: SourceLocation)
+
+  case class MonoStructField(sym: Symbol.StructFieldSym, tpe: SimpleType, loc: SourceLocation)
 
   case class AnonClass(name: String, clazz: java.lang.Class[?], tpe: SimpleType, methods: List[JvmMethod], loc: SourceLocation)
 

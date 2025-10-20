@@ -44,7 +44,9 @@ object SimpleTypePrinter {
     case SimpleType.Lazy(tpe) => Type.Lazy(print(tpe))
     case SimpleType.Tuple(elms) => Type.Tuple(elms.map(print))
     case SimpleType.Enum(sym, targs) => Type.Enum(sym, targs.map(print))
+    case SimpleType.MonoEnum(sym) => Type.Enum(sym, Nil)
     case SimpleType.Struct(sym, targs) => Type.Struct(sym, targs.map(print))
+    case SimpleType.MonoStruct(sym) => Type.Struct(sym, Nil)
     case SimpleType.Arrow(args, result) => Type.Arrow(args.map(print), print(result))
     case SimpleType.RecordEmpty => Type.RecordEmpty
     case SimpleType.RecordExtend(label, value, rest) => Type.RecordExtend(label, print(value), print(rest))

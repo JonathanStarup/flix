@@ -90,7 +90,11 @@ object SimpleType {
 
   case class Enum(sym: Symbol.EnumSym, targs: List[SimpleType]) extends SimpleType
 
+  case class MonoEnum(sym: Symbol.EnumSym) extends SimpleType
+
   case class Struct(sym: Symbol.StructSym, targs: List[SimpleType]) extends SimpleType
+
+  case class MonoStruct(sym: Symbol.StructSym) extends SimpleType
 
   case class Arrow(targs: List[SimpleType], result: SimpleType) extends SimpleType
 
@@ -148,9 +152,11 @@ object SimpleType {
       case Int32 => Int32
       case Int64 => Int64
       case Void | AnyType | Unit | BigDecimal | BigInt | String | Regex | Region | Array(_) |
-           Lazy(_) | Tuple(_) | Enum(_, _) | Struct(_, _) | Arrow(_, _) | RecordEmpty |
+           Lazy(_) | Tuple(_) | MonoEnum(_) | MonoStruct(_) | Arrow(_, _) | RecordEmpty |
            RecordExtend(_, _, _) | ExtensibleEmpty | ExtensibleExtend(_, _, _) | Native(_) | Null =>
         SimpleType.Object
+      case Enum(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
+      case Struct(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
     }
   }
 

@@ -1,15 +1,18 @@
 package ca.uwaterloo.flix.language.phase
 
 import ca.uwaterloo.flix.api.Flix
-import ca.uwaterloo.flix.language.ast.SimpleType.erase
 import ca.uwaterloo.flix.language.ast.ReducedAst.*
 import ca.uwaterloo.flix.language.ast.ReducedAst.Expr.*
-import ca.uwaterloo.flix.language.ast.{AtomicOp, SimpleType, Purity, SourceLocation, Symbol, Type, TypeConstructor}
+import ca.uwaterloo.flix.language.ast.SimpleType.erase
+import ca.uwaterloo.flix.language.ast.{AtomicOp, Purity, ReducedAst, SimpleType, SourceLocation, Symbol, Type, TypeConstructor}
 import ca.uwaterloo.flix.language.dbg.AstPrinter.DebugReducedAst
+import ca.uwaterloo.flix.util.collection.ListOps
 import ca.uwaterloo.flix.util.{InternalCompilerException, ParOps}
-import ca.uwaterloo.flix.util.collection.MapOps
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.function.BiConsumer
 import scala.annotation.unused
+import scala.collection.mutable
 
 /**
   * Erase types and introduce corresponding casting
@@ -33,20 +36,93 @@ import scala.annotation.unused
   *     - result type boxing, this includes return types of defs and their applications
   *     - function call return value casting
   *   - Enums and Structs
-  *     - type arguments are erased
-  *     - polymorphic term types in the declaration are polymorphically erased (see [[polymorphicErasure]])
+  *     - Declarations are erased and specialized.
   */
 object Eraser {
 
   def run(root: Root)(implicit flix: Flix): Root = flix.phase("Eraser") {
+    assert(root.monoEnums.isEmpty)
+    assert(root.monoStructs.isEmpty)
+
+    implicit val r: Root = root
+    implicit val ctx: SharedContext = new SharedContext()
+
     val newDefs = ParOps.parMapValues(root.defs)(visitDef)
-    val newEnums = ParOps.parMapValues(root.enums)(visitEnum)
-    val newStructs = ParOps.parMapValues(root.structs)(visitStruct)
+    val newEnums = specializeEnums(root, ctx.getEnumSpecializations)
+    val newStructs = specializeStructs(root, ctx.getStructSpecializations)
     val newEffects = ParOps.parMapValues(root.effects)(visitEffect)
-    root.copy(defs = newDefs, enums = newEnums, structs = newStructs, effects = newEffects)
+    root.copy(defs = newDefs, enums = Map.empty, monoEnums = newEnums, structs = Map.empty, monoStructs = newStructs, effects = newEffects)
   }
 
-  private def visitDef(defn: Def): Def = defn match {
+  private def specializeEnums(root: Root, enums: Iterable[(Symbol.EnumSym, List[SimpleType], Symbol.EnumSym)]): Map[Symbol.EnumSym, ReducedAst.MonoEnum] =
+    enums.map { case (sym, targs, newSym) => newSym -> specializeEnum(newSym, root.enums(sym), targs) }.toMap
+
+  private def specializeEnum(newSym: Symbol.EnumSym, enm: ReducedAst.Enum, targs: List[SimpleType]): ReducedAst.MonoEnum = {
+    val subst = ListOps.zip(enm.tparams.map(_.sym), targs).toMap
+    val cases = enm.cases.map { case (sym, caze) => sym -> specializeCase(newSym, subst, caze) }
+    ReducedAst.MonoEnum(enm.ann, enm.mod, newSym, cases, enm.loc)
+  }
+
+  private def specializeCase(newSym: Symbol.EnumSym, subst: Map[Symbol.KindedTypeVarSym, SimpleType], caze: ReducedAst.Case): ReducedAst.MonoCase = {
+    val sym = new Symbol.CaseSym(newSym, caze.sym.name, caze.sym.loc)
+    val tpes = caze.tpes.map(instantiateType(subst, _))
+    ReducedAst.MonoCase(sym, tpes, caze.loc)
+  }
+
+  private def specializeStructs(root: Root, structs: Iterable[(Symbol.StructSym, List[SimpleType], Symbol.StructSym)]): Map[Symbol.StructSym, ReducedAst.MonoStruct] = {
+    structs.map { case (sym, targs, newSym) => newSym -> specializeStruct(newSym, root.structs(sym), targs) }.toMap
+  }
+
+  private def specializeStruct(newSym: Symbol.StructSym, struct: ReducedAst.Struct, targs: List[SimpleType]): ReducedAst.MonoStruct = {
+    val subst = ListOps.zip(struct.tparams.map(_.sym), targs).toMap
+    val fields = struct.fields.map(specializeField(newSym, subst, _))
+    ReducedAst.MonoStruct(struct.ann, struct.mod, newSym, fields, struct.loc)
+  }
+
+  private def specializeField(newSym: Symbol.StructSym, subst: Map[Symbol.KindedTypeVarSym, SimpleType], field: ReducedAst.StructField): ReducedAst.MonoStructField = {
+    val sym = new Symbol.StructFieldSym(newSym, field.sym.name, field.sym.loc)
+    val tpe = instantiateType(subst, field.tpe)
+    ReducedAst.MonoStructField(sym, tpe, field.loc)
+  }
+
+  /**
+    * Instantiates `tpe` given the variable map `subst`.
+    *
+    * Examples:
+    *   - `instantiateType([x -> Int32], x) = Int32`
+    *   - `instantiateType(_, Int32) = Int32`
+    *   - `instantiateType(_, Object) = Object`
+    *   - `instantiateType([x -> String], x) = throw InternalCompilerException`
+    *   - `instantiateType([x -> Int32], y) = throw InternalCompilerException`
+    *   - `instantiateType(_, Option[Int32]) =  throw InternalCompilerException`
+    *
+    * @param subst Decides types for variables, must only contain erased types.
+    * @param tpe   The type to instantiate, must be a polymorphic erased type
+    *              (either [[Type.Var]], a primitive type, or `java.lang.Object`)
+    */
+  private def instantiateType(subst: Map[Symbol.KindedTypeVarSym, SimpleType], tpe: Type): SimpleType = tpe match {
+    case Type.Var(sym, _) => subst(sym)
+    case Type.Cst(tc, _) => tc match {
+      case TypeConstructor.Bool => SimpleType.Bool
+      case TypeConstructor.Char => SimpleType.Char
+      case TypeConstructor.Float32 => SimpleType.Float32
+      case TypeConstructor.Float64 => SimpleType.Float64
+      case TypeConstructor.Int8 => SimpleType.Int8
+      case TypeConstructor.Int16 => SimpleType.Int16
+      case TypeConstructor.Int32 => SimpleType.Int32
+      case TypeConstructor.Int64 => SimpleType.Int64
+      case TypeConstructor.Native(clazz) if clazz == classOf[Object] => SimpleType.Object
+      case _ => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    }
+    case Type.Apply(_, _, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    case Type.Alias(_, _, _, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    case Type.AssocType(_, _, _, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    case Type.JvmToType(_, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    case Type.JvmToEff(_, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+    case Type.UnresolvedJvmType(_, _) => throw InternalCompilerException(s"Unexpected type: '$tpe'", tpe.loc)
+  }
+
+  private def visitDef(defn: Def)(implicit ctx: SharedContext, root: Root, flix: Flix): Def = defn match {
     case Def(ann, mod, sym, cparams, fparams, lparams, pcPoints, exp, tpe, originalTpe, loc) =>
       val eNew = visitExp(exp)
       val e = Expr.ApplyAtomic(AtomicOp.Box, List(eNew), box(tpe), exp.purity, loc)
@@ -63,50 +139,28 @@ object Eraser {
       LocalParam(sym, visitType(tpe))
   }
 
-  private def visitEnum(enm: Enum): Enum = enm match {
-    case Enum(ann, mod, sym, tparams, cases0, loc) =>
-      val cases = MapOps.mapValues(cases0)(visitEnumTag)
-      Enum(ann, mod, sym, tparams, cases, loc)
-  }
-
-  private def visitEnumTag(caze: Case): Case = caze match {
-    case Case(sym, tpes, loc) =>
-      Case(sym, tpes.map(polymorphicErasure), loc)
-  }
-
-  private def visitStruct(struct: Struct): Struct = struct match {
-    case Struct(ann, mod, sym, tparams, fields0, loc) =>
-      val fields = fields0.map(visitStructField)
-      Struct(ann, mod, sym, tparams, fields, loc)
-  }
-
-  private def visitStructField(field: StructField): StructField = field match {
-    case StructField(sym, tpe, loc) =>
-      StructField(sym, polymorphicErasure(tpe), loc)
-  }
-
-  private def visitBranch(branch: (Symbol.LabelSym, Expr)): (Symbol.LabelSym, Expr) = branch match {
+  private def visitBranch(branch: (Symbol.LabelSym, Expr))(implicit ctx: SharedContext, root: Root, flix: Flix): (Symbol.LabelSym, Expr) = branch match {
     case (sym, exp) =>
       (sym, visitExp(exp))
   }
 
-  private def visitCatchRule(rule: CatchRule): CatchRule = rule match {
+  private def visitCatchRule(rule: CatchRule)(implicit ctx: SharedContext, root: Root, flix: Flix): CatchRule = rule match {
     case CatchRule(sym, clazz, exp) =>
       CatchRule(sym, clazz, visitExp(exp))
   }
 
-  private def visitHandlerRule(rule: HandlerRule): HandlerRule = rule match {
+  private def visitHandlerRule(rule: HandlerRule)(implicit ctx: SharedContext, root: Root, flix: Flix): HandlerRule = rule match {
     case HandlerRule(op, fparams, exp) =>
       HandlerRule(op, fparams.map(visitParam), visitExp(exp))
   }
 
-  private def visitJvmMethod(method: JvmMethod): JvmMethod = method match {
+  private def visitJvmMethod(method: JvmMethod)(implicit ctx: SharedContext, root: Root, flix: Flix): JvmMethod = method match {
     case JvmMethod(ident, fparams, clo, retTpe, purity, loc) =>
       // return type is not erased to maintain class signatures
       JvmMethod(ident, fparams.map(visitParam), visitExp(clo), visitType(retTpe), purity, loc)
   }
 
-  private def visitExp(exp0: Expr): Expr = exp0 match {
+  private def visitExp(exp0: Expr)(implicit ctx: SharedContext, root: Root, flix: Flix): Expr = exp0 match {
     case Cst(cst, loc) =>
       Cst(cst, loc)
     case Var(sym, tpe, loc) =>
@@ -118,9 +172,20 @@ object Eraser {
         case AtomicOp.Closure(_) => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.Unary(_) => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.Binary(_) => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.Is(_) => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.Tag(_) => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.Untag(_, _) => ApplyAtomic(op, es, t, purity, loc)
+        case AtomicOp.Is(sym0) =>
+          val List(e) = es
+          val newEnumSym = e.tpe.asInstanceOf[SimpleType.MonoEnum].sym
+          val sym = new Symbol.CaseSym(newEnumSym, sym0.name, sym0.loc)
+          ApplyAtomic(AtomicOp.Is(sym), es, t, purity, loc)
+        case AtomicOp.Tag(sym0) =>
+          val newEnumSym = t.asInstanceOf[SimpleType.MonoEnum].sym
+          val sym = new Symbol.CaseSym(newEnumSym, sym0.name, sym0.loc)
+          ApplyAtomic(AtomicOp.Tag(sym), es, t, purity, loc)
+        case AtomicOp.Untag(sym0, idx) =>
+          val List(e) = es
+          val newEnumSym = e.tpe.asInstanceOf[SimpleType.MonoEnum].sym
+          val sym = new Symbol.CaseSym(newEnumSym, sym0.name, sym0.loc)
+          ApplyAtomic(AtomicOp.Untag(sym, idx), es, t, purity, loc)
         case AtomicOp.Index(_) =>
           castExp(ApplyAtomic(op, es, erase(tpe), purity, loc), t, purity, loc)
         case AtomicOp.Tuple => ApplyAtomic(op, es, t, purity, loc)
@@ -136,8 +201,13 @@ object Eraser {
         case AtomicOp.ArrayLoad => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.ArrayStore => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.ArrayLength => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.StructNew(_, _) => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.StructGet(_) => castExp(ApplyAtomic(op, es, erase(tpe), purity, loc), t, purity, loc)
+        case AtomicOp.StructNew(_, fields0) =>
+          val sym = t.asInstanceOf[SimpleType.MonoStruct].sym
+          val fields = fields0.map(fieldSym => new Symbol.StructFieldSym(sym, fieldSym.name, fieldSym.loc))
+          ApplyAtomic(AtomicOp.StructNew(sym, fields), es, t, purity, loc)
+        case AtomicOp.StructGet(sym0) =>
+          ???
+          castExp(ApplyAtomic(op, es, erase(tpe), purity, loc), t, purity, loc)
         case AtomicOp.StructPut(_) => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.InstanceOf(_) => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.Cast => ApplyAtomic(op, es, t, purity, loc)
@@ -240,45 +310,42 @@ object Eraser {
       case ExtensibleExtend(cons, tpes, rest) => ExtensibleExtend(cons, tpes.map(erase), visitType(rest))
       case ExtensibleEmpty => ExtensibleEmpty
       case Native(clazz) => Native(clazz)
+      case MonoEnum(_) => throw InternalCompilerException(s"Unexpected type '$tpe0'", SourceLocation.Unknown)
+      case MonoStruct(_) => throw InternalCompilerException(s"Unexpected type '$tpe0'", SourceLocation.Unknown)
     }
-  }
-
-  /**
-    * Erases the polymorphic `tpe`. The returned type is either [[Type.Var]], [[Type.Cst]] of a
-    * primitive type, or [[Type.Cst]] of `java.lang.Object`.
-    *
-    *   - `polymorphicErasure(a) = a`
-    *   - `polymorphicErasure(Int32) = Int32`
-    *   - `polymorphicErasure(String) = Object`
-    *   - `polymorphicErasure(Option[a]) = Object`
-    *   - `polymorphicErasure(a[Int32]) = Object`
-    *
-    * We do not have aliases, associated types, and the like, so any [[Type.Apply]] will be
-    * *building* a larger type, and can therefore not be a primitive type.
-    */
-  private def polymorphicErasure(tpe: Type): Type = tpe match {
-    case v@Type.Var(_, _) => v
-    case c@Type.Cst(tc, loc) => tc match {
-      case TypeConstructor.Bool => c
-      case TypeConstructor.Char => c
-      case TypeConstructor.Float32 => c
-      case TypeConstructor.Float64 => c
-      case TypeConstructor.Int8 => c
-      case TypeConstructor.Int16 => c
-      case TypeConstructor.Int32 => c
-      case TypeConstructor.Int64 => c
-      // All primitive types are covered, so the rest can only be erased to Object.
-      case _ => Type.Cst(TypeConstructor.Native(classOf[Object]), loc)
-    }
-    case Type.Apply(_, _, loc) => Type.Cst(TypeConstructor.Native(classOf[Object]), loc)
-
-    case Type.Alias(_, _, _, _) => throw InternalCompilerException(s"Unexpected type $tpe", tpe.loc)
-    case Type.AssocType(_, _, _, _) => throw InternalCompilerException(s"Unexpected type $tpe", tpe.loc)
-    case Type.JvmToType(_, _) => throw InternalCompilerException(s"Unexpected type $tpe", tpe.loc)
-    case Type.JvmToEff(_, _) => throw InternalCompilerException(s"Unexpected type $tpe", tpe.loc)
-    case Type.UnresolvedJvmType(_, _) => throw InternalCompilerException(s"Unexpected type $tpe", tpe.loc)
   }
 
   private def box(@unused tpe: SimpleType): SimpleType = SimpleType.Object
+
+  private def unifyTypes(targs: List[SimpleType], tparams: List[Type]): Map[Symbol.KindedTypeVarSym, SimpleType] = {
+    ???
+  }
+
+  private class SharedContext() {
+
+    private val enumSpecializations: ConcurrentHashMap[(Symbol.EnumSym, List[SimpleType]), Symbol.EnumSym] = new ConcurrentHashMap()
+
+    private val structSpecializations: ConcurrentHashMap[(Symbol.StructSym, List[SimpleType]), Symbol.StructSym] = new ConcurrentHashMap()
+
+    def getEnumSpecializations: Iterable[(Symbol.EnumSym, List[SimpleType], Symbol.EnumSym)] =
+      toArray(enumSpecializations)
+
+    def getStructSpecializations: Iterable[(Symbol.StructSym, List[SimpleType], Symbol.StructSym)] =
+      toArray(structSpecializations)
+
+    def enqueueEnumSpecialization(sym: Symbol.EnumSym, targs: List[SimpleType])(implicit flix: Flix): Symbol.EnumSym =
+      enumSpecializations.computeIfAbsent((sym, targs), entry => Symbol.freshEnumSym(entry._1))
+
+    private def toArray[A <: AnyRef, B <: AnyRef](m: ConcurrentHashMap[(A, B), A]): Array[(A, B, A)] = {
+      val res = mutable.ArrayBuffer.empty[(A, B, A)]
+      val consumer = new BiConsumer[(A, B), A] {
+        override def accept(t: (A, B), u: A): Unit =
+          res.append((t._1, t._2, u))
+      }
+      m.forEach(consumer)
+      res.toArray
+    }
+
+  }
 
 }

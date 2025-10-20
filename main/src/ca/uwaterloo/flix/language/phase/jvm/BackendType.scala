@@ -16,7 +16,8 @@
 
 package ca.uwaterloo.flix.language.phase.jvm
 
-import ca.uwaterloo.flix.language.ast.{ReducedAst, SimpleType}
+import ca.uwaterloo.flix.language.ast.{ReducedAst, SimpleType, SourceLocation}
+import ca.uwaterloo.flix.util.InternalCompilerException
 
 import scala.annotation.tailrec
 
@@ -151,14 +152,16 @@ object BackendType {
       case SimpleType.Array(tpe) => Array(toBackendType(tpe))
       case SimpleType.Lazy(tpe) => BackendObjType.Lazy(toBackendType(tpe)).toTpe
       case SimpleType.Tuple(elms) => BackendObjType.Tuple(elms.map(toBackendType)).toTpe
-      case SimpleType.Enum(_, _) => BackendObjType.Tagged.toTpe
-      case SimpleType.Struct(sym, targs) => BackendObjType.Struct(JvmOps.instantiateStruct(sym, targs)).toTpe
+      case SimpleType.MonoEnum(_) => BackendObjType.Tagged.toTpe
+      case SimpleType.MonoStruct(sym) => BackendObjType.Struct(root.monoStructs(sym).fields.map(field => toBackendType(field.tpe))).toTpe
       case SimpleType.Arrow(args, result) => BackendObjType.Arrow(args.map(toBackendType), toBackendType(result)).toTpe
       case SimpleType.RecordEmpty => BackendObjType.Record.toTpe
       case SimpleType.RecordExtend(_, _, _) => BackendObjType.Record.toTpe
       case SimpleType.ExtensibleEmpty => BackendObjType.Tagged.toTpe
       case SimpleType.ExtensibleExtend(_, _, _) => BackendObjType.Tagged.toTpe
       case SimpleType.Native(clazz) => BackendObjType.Native(JvmName.ofClass(clazz)).toTpe
+      case SimpleType.Enum(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe0'", SourceLocation.Unknown)
+      case SimpleType.Struct(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe0'", SourceLocation.Unknown)
     }
   }
 
@@ -191,11 +194,13 @@ object BackendType {
     case SimpleType.Float64 => BackendType.Float64
     case SimpleType.Void | SimpleType.AnyType | SimpleType.Unit | SimpleType.BigDecimal | SimpleType.BigInt |
          SimpleType.String | SimpleType.Regex | SimpleType.Array(_) | SimpleType.Lazy(_) |
-         SimpleType.Tuple(_) | SimpleType.Enum(_, _) | SimpleType.Struct(_, _) | SimpleType.Arrow(_, _) |
+         SimpleType.Tuple(_) | SimpleType.MonoEnum(_) | SimpleType.MonoStruct(_) | SimpleType.Arrow(_, _) |
          SimpleType.RecordEmpty | SimpleType.RecordExtend(_, _, _) |
          SimpleType.ExtensibleExtend(_, _, _) | SimpleType.ExtensibleEmpty | SimpleType.Native(_) |
          SimpleType.Region | SimpleType.Null =>
       BackendType.Object
+    case SimpleType.Enum(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
+    case SimpleType.Struct(_, _) => throw InternalCompilerException(s"Unexpected type '$tpe'", SourceLocation.Unknown)
   }
 
   sealed trait PrimitiveType extends BackendType
