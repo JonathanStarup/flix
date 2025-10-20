@@ -26,9 +26,6 @@ import scala.annotation.unused
   *   - Record
   *     - component type erasure
   *     - select casting
-  *   - Lazy
-  *     - component type erasure
-  *     - force casting
   *   - Function
   *     - result type boxing, this includes return types of defs and their applications
   *     - function call return value casting
@@ -153,8 +150,7 @@ object Eraser {
         case AtomicOp.Throw => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.Spawn => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.Lazy => ApplyAtomic(op, es, t, purity, loc)
-        case AtomicOp.Force =>
-          castExp(ApplyAtomic(op, es, erase(tpe), purity, loc), t, purity, loc)
+        case AtomicOp.Force => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.HoleError(_) => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.MatchError => ApplyAtomic(op, es, t, purity, loc)
         case AtomicOp.CastError(_, _) => ApplyAtomic(op, es, t, purity, loc)
@@ -230,7 +226,7 @@ object Eraser {
       case Region => Region
       case Null => Null
       case Array(tpe) => SimpleType.mkArray(visitType(tpe))
-      case Lazy(tpe) => Lazy(erase(tpe))
+      case Lazy(tpe) => SimpleType.mkLazy(visitType(tpe))
       case Tuple(elms) => SimpleType.mkTuple(elms.map(erase))
       case SimpleType.Enum(sym, targs) => SimpleType.mkEnum(sym, targs.map(erase))
       case SimpleType.Struct(sym, tparams) => SimpleType.Struct(sym, tparams.map(erase))

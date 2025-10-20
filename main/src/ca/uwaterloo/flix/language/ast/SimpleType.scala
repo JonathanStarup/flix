@@ -113,6 +113,14 @@ object SimpleType {
   }
 
   /**
+    * Smart constructor for [[SimpleType.Lazy]].
+    */
+  def mkLazy(tpe: SimpleType): SimpleType.Lazy = {
+    val t = Lazy(tpe)
+    Cache.getCanonicalValue(t)
+  }
+
+  /**
     * Smart constructor for [[SimpleType.Tuple]].
     */
   def mkTuple(tpes: List[SimpleType]): SimpleType.Tuple = {
