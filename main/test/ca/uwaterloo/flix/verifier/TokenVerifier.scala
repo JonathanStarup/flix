@@ -89,7 +89,7 @@ object TokenVerifier {
   private def checkRange(token: Token): Unit = {
     if (token.kind != TokenKind.Eof) {
       if (token.start >= token.end) wrongOffsetRange(token)
-      if (!isStrictlyBefore(token.sp1, token.sp2)) wrongPositionRange(token)
+      if (!isStrictlyBefore(token.startPosition, token.endPosition)) wrongPositionRange(token)
     }
   }
 
@@ -116,13 +116,13 @@ object TokenVerifier {
   /** Checks I-Pos. */
   private def checkPositionOrder(left: Token, right: Token): Unit = {
     // Token end positions are exclusive.
-    if (!isBefore(left.sp2, right.sp1)) outOfOrderPositions(left, right)
+    if (!isBefore(left.endPosition, right.startPosition)) outOfOrderPositions(left, right)
   }
 
   /** Checks I-Col-End. */
   private def checkColEnd(token: Token): Unit = {
     if (token.kind != TokenKind.Eof) {
-      if (token.sp2.colOneIndexed == 1) unneccesaryEndCol(token)
+      if (token.endPosition.colOneIndexed == 1) unneccesaryEndCol(token)
     }
   }
 
@@ -179,7 +179,7 @@ object TokenVerifier {
 
   private def wrongPositionRange(found: Token): Nothing = {
     val loc = found.mkSourceLocation()
-    val positionRangeString = s"${found.sp1.lineOneIndexed}:${found.sp1.colOneIndexed} - ${found.sp2.lineOneIndexed}:${found.sp2.colOneIndexed}"
+    val positionRangeString = s"${found.startPosition.lineOneIndexed}:${found.startPosition.colOneIndexed} - ${found.endPosition.lineOneIndexed}:${found.endPosition.colOneIndexed}"
     val msg =
       s""">> Invalid position range: $positionRangeString.
          |
@@ -202,8 +202,8 @@ object TokenVerifier {
 
   private def outOfOrderPositions(left: Token, right: Token): Nothing = {
     val loc = left.mkSourceLocation()
-    val leftPos = s"${left.sp1.lineOneIndexed}:${left.sp1.colOneIndexed} - ${left.sp2.lineOneIndexed}:${left.sp2.colOneIndexed}"
-    val rightPos = s"${right.sp1.lineOneIndexed}:${right.sp1.colOneIndexed} - ${right.sp2.lineOneIndexed}:${right.sp2.colOneIndexed}"
+    val leftPos = s"${left.startPosition.lineOneIndexed}:${left.startPosition.colOneIndexed} - ${left.endPosition.lineOneIndexed}:${left.endPosition.colOneIndexed}"
+    val rightPos = s"${right.startPosition.lineOneIndexed}:${right.startPosition.colOneIndexed} - ${right.endPosition.lineOneIndexed}:${right.endPosition.colOneIndexed}"
     val msg =
       s""">> Overlapping tokens (position): $leftPos and $rightPos.
          |

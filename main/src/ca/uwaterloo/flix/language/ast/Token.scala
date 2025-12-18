@@ -27,14 +27,14 @@ import ca.uwaterloo.flix.language.ast.shared.Source
   *
   * We do so because [[Token]]s are very common objects.
   *
-  * @param kind  The kind of token this instance represents.
-  * @param src   A pointer to the source that this lexeme stems from.
-  * @param start The absolute character offset into `src` of the beginning of the lexeme. Must be zero-indexed.
-  * @param end   The absolute character offset into `src` of the end (exclusive) of the lexeme. Must be zero-indexed.
-  * @param sp1   The source position that the lexeme __starts__ on.
-  * @param sp2   The source position that the lexeme __ends__ on (exclusive).
+  * @param kind          The kind of token this instance represents.
+  * @param src           A pointer to the source that this lexeme stems from.
+  * @param start         The absolute character offset into `src` of the beginning of the lexeme. Must be zero-indexed.
+  * @param end           The absolute character offset into `src` of the end (exclusive) of the lexeme. Must be zero-indexed.
+  * @param startPosition The source position that the lexeme __starts__ on.
+  * @param endPosition   The source position that the lexeme __ends__ on (exclusive).
   */
-case class Token(kind: TokenKind, src: Source, start: Int, end: Int, sp1: SourcePosition, sp2: SourcePosition) extends SyntaxTree.Child {
+case class Token(kind: TokenKind, src: Source, start: Int, end: Int, startPosition: SourcePosition, endPosition: SourcePosition) extends SyntaxTree.Child {
   /**
     * Computes the lexeme that the token refers to by slicing it from `src`.
     *
@@ -47,10 +47,10 @@ case class Token(kind: TokenKind, src: Source, start: Int, end: Int, sp1: Source
     *
     * NB: Tokens are zero-indexed
     */
-  def mkSourceLocation(isReal: Boolean = true): SourceLocation = SourceLocation(isReal, src, sp1, sp2)
+  def mkSourceLocation(isReal: Boolean = true): SourceLocation = SourceLocation(isReal, src, startPosition, endPosition)
 
   /**
     * Returns a one-indexed string representation of this token. Must only be used for debugging.
     */
-  override def toString: String = s"Token($kind, $text, ${sp1.lineOneIndexed}, ${sp1.colOneIndexed}, ${sp2.lineOneIndexed}, ${sp2.colOneIndexed})"
+  override def toString: String = s"Token($kind, $text, ${startPosition.lineOneIndexed}, ${startPosition.colOneIndexed}, ${endPosition.lineOneIndexed}, ${endPosition.colOneIndexed})"
 }
